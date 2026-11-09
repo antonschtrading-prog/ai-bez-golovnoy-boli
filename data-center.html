@@ -30,10 +30,10 @@ diff.replaceChildren();
 if(result.errors.length){preview.className='warning';preview.textContent='Обнаружено проблем в копии: '+result.errors.map(x=>x.key+' — '+x.issue).join('; ')+'.';}
 else{preview.className='status';preview.textContent='Формат поддерживается. Разделов в файле: '+Object.keys(result.sections).length+'.';}
 const plan=core.previewMerge(snapshot.sections,result.sections);
-const groups=[['Одинаковые разделы',plan.same],['Новые разделы',plan.additions],['Разные версии данных',plan.conflicts.map(x=>x.key)],['Некорректные данные',plan.invalid.map(x=>x.key)]];
+const groups=[['Одинаковые разделы',plan.same],['Новые разделы',plan.additions],['Различающиеся разделы (предварительная проверка)',plan.conflicts.map(x=>x.key)],['Некорректные данные',plan.invalid.map(x=>x.key)]];
 for(const [title,entries] of groups){const p=document.createElement('p');const b=document.createElement('strong');b.textContent=title+': ';p.append(b);p.append(entries.length?entries.map(k=>labels[k]||k).join(', '):'нет');diff.append(p)}
 explainMerge(result);
-if(plan.conflicts.length||plan.invalid.length||result.errors.length){const p=item(diff,'p','Автоматическое объединение небезопасно. Сохрани обе копии отдельно до разрешения конфликтов.');p.className='warning'}
+if(plan.conflicts.length||plan.invalid.length||result.errors.length){const p=item(diff,'p','Различия требуют по-полевой проверки ниже. Исходные копии сохраняй отдельно.');p.className='warning'}
 else{const p=item(diff,'p','Конфликтов по текущей проверке нет, но перенос данных здесь намеренно не выполняется.');p.className='status'}
 }
 document.querySelector('#refresh').onclick=renderLocal;
