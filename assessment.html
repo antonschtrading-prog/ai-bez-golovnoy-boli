@@ -31,4 +31,4 @@ if(navigator.clipboard?.writeText)navigator.clipboard.writeText(text).then(()=>{
 document.querySelector('#weak').onclick=()=>{for(const x of LEVELS){const p=get(x.id);if(x.questions.some((q,i)=>p.answers[i]!==undefined&&p.answers[i]!==q.correct)){choose(x.id);document.querySelector('#status').textContent='Открыт уровень с ошибками';return}}document.querySelector('#status').textContent='Неисправленных ошибок в отвеченных вопросах нет'};
 }
 render();
-</script></body></html>
+</script><script src="./course-nav.js" defer></script></body></html>
