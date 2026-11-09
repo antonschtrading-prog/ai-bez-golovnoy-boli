@@ -5,19 +5,19 @@ function read(key){try{let s=localStorage.getItem(key);return s?JSON.parse(s):nu
 function update(){const core=read('ai-no-headache-v1');const lab=read('ai-course-study-lab-v1');const deep=read('ai-course-deep-workshop-v1');let known=0,maximum=0,summary=[];
 const completed=Array.isArray(core?.completed)?core.completed.length:null;
 document.querySelector('#coreMetric').textContent=completed===null?'Нет доступных отметок или используется другой формат хранения':'Отмечено уроков: '+completed;
-if(completed!==null){known+=Math.min(completed,40);maximum+=40;summary.push('Основной курс: '+completed+' отметок')}
+if(completed!==null){summary.push('Основной курс: '+completed+' отметок (без общей процентной оценки)')}
 const terms=lab?.terms&&typeof lab.terms==='object'?Object.values(lab.terms).filter(x=>x&&Number(x.level)>0).length:null;
 const cases=lab?.cases&&typeof lab.cases==='object'?Object.keys(lab.cases).length:null;
 document.querySelector('#termsMetric').textContent=terms===null?'Ещё нет данных о повторении':'Изучено терминов: '+terms+'; заданий с ответом: '+(cases??0);
-if(terms!==null){known+=Math.min(terms,47);maximum+=47;summary.push('Термины: '+terms+' из 47')}
+if(terms!==null){known+=Math.min(terms,47);maximum+=47;known+=Math.min(cases||0,12);maximum+=12;summary.push('Термины: '+terms+' из 47; ситуации: '+(cases||0)+' из 12')}
 const works=deep?.progress&&typeof deep.progress==='object'?Object.values(deep.progress).filter(x=>typeof x?.work==='string'&&x.work.trim().length>=120).length:null;
-const assess=read('ai-course-assessment-v1');const assessed=assess?.results&&typeof assess.results==='object'?Object.keys(assess.results).length:0;document.querySelector('#assessmentMetric').textContent='Начато контрольных работ: '+assessed+' из 5';
+const assess=read('ai-course-assessment-v1');const assessed=assess?.results&&typeof assess.results==='object'?Object.keys(assess.results).length:0;document.querySelector('#assessmentMetric').textContent='Начато контрольных работ: '+assessed+' из 5';if(assess?.results){known+=Math.min(assessed,5);maximum+=5;}
 document.querySelector('#practiceMetric').textContent=works===null?'Практика пока не начата':'Заполнено развёрнутых ответов: '+works+' из 7';
 if(works!==null){known+=Math.min(works,7);maximum+=7;summary.push('Практика: '+works+' из 7')}
 const pct=maximum?Math.round(known/maximum*100):0;
-document.querySelector('#heading').textContent=maximum?'Ориентировочно выполнено '+pct+'% отслеживаемого материала':'Начни с первого урока';
+document.querySelector('#heading').textContent=maximum?'Активность в доступных тренажёрах: '+pct+'%':'Начни с первого урока';
 document.querySelector('#bar').style.width=pct+'%';
-document.querySelector('#sub').textContent='Это обзор активности, не оценка уровня знаний. Разделы имеют разную сложность и неравный вес.';
+document.querySelector('#sub').textContent='Процент относится только к локально отслеживаемым действиям, а не к прохождению всего курса или качеству знаний. Просмотр теории в расчёт не входит.';
 document.querySelector('#details').textContent=summary.join(' · ')||'Сохранённых результатов ещё не обнаружено';
 }
 document.querySelector('#refresh').onclick=update;
