@@ -1,0 +1,33 @@
+<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0b1120"><title>Индивидуальный маршрут — ИИ без головной боли</title><style>
+:root{font-family:system-ui,-apple-system,Segoe UI,sans-serif;color-scheme:dark;background:#0b1120;color:#f0f5fc}*{box-sizing:border-box}body{margin:0}main{max-width:950px;margin:auto;padding:20px 16px 70px}a{color:#a9edbc}.muted{color:#b1c1d7;line-height:1.6}.panel{background:#17253b;border:1px solid #3b526e;border-radius:16px;padding:20px;margin:15px 0}.task{background:#22324b;border:1px solid #465c78;border-radius:12px;padding:16px;margin:10px 0}.tag{color:#a9edbc;font-size:13px;font-weight:750}.button{display:inline-block;background:#a9edbc;color:#102b1a;text-decoration:none;border-radius:10px;padding:11px 15px;font-weight:750}.button.secondary{background:#2c435c;color:white;border:1px solid #7590a9}.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}h1{font-size:clamp(26px,4vw,40px)}h2{font-size:21px}button{font:inherit;background:#283e5a;color:white;border:1px solid #66809b;padding:10px 14px;border-radius:10px;cursor:pointer}button:focus-visible,a:focus-visible{outline:3px solid #ffe4a7}.small{font-size:13px}footer{color:#b1c1d7;font-size:13px;margin-top:25px}</style></head><body><main><p><a href="./my-route.html">← Весь учебный маршрут</a></p><h1>Индивидуальный план обучения</h1><p class="muted">План строится по твоим локально сохранённым ответам, ошибкам и повторениям. Он не зависит от выбранной нейросети и не делает вид, что автоматически оценивает качество открытых работ.</p><section class="panel"><div class="row"><span class="tag">Рекомендации на сегодня</span><button id="refresh">Пересчитать</button></div><h2 id="headline">Подбираем задания…</h2><p class="muted" id="explain"></p><div id="recommendations"></div></section><section class="panel"><h2>Что учитывается</h2><p>Приоритет 1 — незакрытые ошибки контрольных работ. Приоритет 2 — упражнения интервального повторения, срок которых наступил. Приоритет 3 — незаконченная практическая работа. Если данных мало, предлагается базовая диагностика.</p><p class="muted small">Если ты прошёл упражнение на другом устройстве, здесь оно не отобразится до ручного переноса резервной копии. Частота повторений и порядок рекомендаций — учебные эвристики, а не подтверждённая диагностика способностей.</p></section><footer>Рекомендации не изменяют результаты. Для переноса данных используй резервную копию в разделе «Мой учебный маршрут».</footer></main><script>
+'use strict';
+const LEVELS=['A1','A2','B1','B2','C1'];
+const safeRead=k=>{try{return JSON.parse(localStorage.getItem(k)||'null')}catch(e){return null}};
+const add=(arr,category,title,reason,url,weight,level)=>arr.push({category,title,reason,url,weight,level});
+function build(){
+const a=safeRead('ai-course-assessment-v1'),r=safeRead('ai-course-review-v1'),lab=safeRead('ai-course-study-lab-v1'),deep=safeRead('ai-course-deep-workshop-v1'),out=[];
+const assessment=a?.results&&typeof a.results==='object'?a.results:{};
+for(const level of LEVELS){
+ const p=assessment[level];if(!p)continue;
+ if(Array.isArray(p.errors)&&p.errors.length)add(out,'Ошибка в проверяемых вопросах','Повтори контрольную работу '+level,'Незакрытых ошибок: '+p.errors.length+'. Разбери причины и проверь решение заново.','./assessment.html',100,level);
+ else if(p.work&&p.work.trim()&&p.work.trim().length<120)add(out,'Неоконченная работа','Дополни самостоятельный ответ '+level,'Уже есть начатое решение, но аргументация пока короткая.','./assessment.html',55,level);
+}
+const topics=r?.items&&typeof r.items==='object'?r.items:{};
+const retry=Object.keys(topics).filter(k=>topics[k]&&topics[k].next<=Date.now()&&topics[k].attempts>0);
+if(retry.length)add(out,'Интервальное повторение','Закрепи ранее изученные темы','По графику повторения к занятию готово тем: '+retry.length+'.','./review.html',85);
+const terms=lab?.terms&&typeof lab.terms==='object'?lab.terms:{};
+const ready=Object.keys(terms).filter(k=>terms[k]&&terms[k].next<=Date.now());
+if(ready.length)add(out,'Повторение терминов','Повтори терминологию','По сохранённым датам к повторению готовы '+ready.length+' терминов.','./study-lab.html',75);
+const progress=deep?.progress&&typeof deep.progress==='object'?deep.progress:{};
+const workCount=Object.values(progress).filter(p=>p&&typeof p.work==='string'&&p.work.trim().length>=120).length;
+if(workCount<7)add(out,'Практическое применение','Выполни углублённую практику','Развёрнутые ответы заполнены в '+workCount+' из 7 занятий.','./deep-practice.html',45);
+if(!Object.keys(assessment).length)add(out,'Начальная диагностика','Проверь текущий уровень','Начни с A1. Сначала ответь на вопросы, затем попробуй практику.','./assessment.html',65,'A1');
+if(!out.length)add(out,'Следующий шаг','Проверь знания на новой задаче','В сохранённых данных нет срочных повторений. Можно попробовать другую ситуацию и сравнить решения.','./compare-ai.html',25);
+out.sort((x,y)=>y.weight-x.weight||LEVELS.indexOf(x.level)-LEVELS.indexOf(y.level));
+return out.slice(0,5);
+}
+function render(){const out=build();document.querySelector('#headline').textContent=out[0]?.title||'Выбери следующее задание';document.querySelector('#explain').textContent='Выбрано рекомендаций: '+out.length+'. Сначала выполняй более приоритетные задания.';const area=document.querySelector('#recommendations');area.replaceChildren();
+for(const [i,item] of out.entries()){const section=document.createElement('section');section.className='task';const tag=document.createElement('div');tag.className='tag';tag.textContent=(i+1)+'. '+item.category;const title=document.createElement('h3');title.textContent=item.title;const p=document.createElement('p');p.className='muted';p.textContent=item.reason;const link=document.createElement('a');link.className='button'+(i?' secondary':'');link.href=item.url;link.textContent='Перейти к заданию';section.append(tag,title,p,link);area.append(section)}
+}
+document.querySelector('#refresh').onclick=render;window.addEventListener('pageshow',render);render();
+</script></body></html>
