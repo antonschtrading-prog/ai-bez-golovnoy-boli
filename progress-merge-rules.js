@@ -4,6 +4,7 @@
  */
 (function(root){'use strict';
 const has=(o,k)=>Object.prototype.hasOwnProperty.call(o,k);
+const unsafe=k=>k==='__proto__'||k==='constructor'||k==='prototype';
 const record=x=>x!==null&&typeof x==='object'&&!Array.isArray(x);
 const clone=x=>JSON.parse(JSON.stringify(x));
 const same=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
@@ -33,6 +34,7 @@ function audit(local,incoming){
   if(same(a,b)){proposed[key]=clone(a);unchanged.push({key});continue}
   const out=clone(a),rule=rules[key];
   for(const field of Object.keys(b)){
+   if(unsafe(field)){conflicts.push({key,field,reason:'Недопустимое имя поля'});continue}
    if(!has(a,field)){out[field]=clone(b[field]);single.push({key,field,reason:'Поле есть только в одной копии'});continue}
    if(same(a[field],b[field]))continue;
    if(rule.set.includes(field)){
@@ -46,6 +48,7 @@ function audit(local,incoming){
      if(!record(a[field])||!record(b[field])){conflicts.push({key,field,reason:'Несовместимые структуры'});continue}
      const next=clone(a[field]);let added=0;
      for(const entry of Object.keys(b[field])){
+       if(unsafe(entry)){conflicts.push({key,field:field+'.'+entry,reason:'Недопустимое имя записи'});continue}
        if(!has(a[field],entry)){next[entry]=clone(b[field][entry]);added++}
        else if(!same(a[field][entry],b[field][entry])){
          conflicts.push({key,field:field+'.'+entry,reason:'Разные значения одной записи — требуется ручное решение'});
