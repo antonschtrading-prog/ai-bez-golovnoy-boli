@@ -25,4 +25,4 @@ document.querySelector('#work').oninput=e=>{state.items[selected]={...record(sel
 document.querySelector('#next').onclick=()=>{const w=examWeak();const available=ITEMS.map((_,j)=>j).filter(j=>j!==selected&&due(j));const preferred=available.find(j=>w.includes(ITEMS[j].level));choose(preferred??available[0]??(selected+1)%ITEMS.length)};
 }
 render();
-</script></body></html>
+</script><script src="./course-nav.js" defer></script></body></html>
