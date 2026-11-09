@@ -21,4 +21,4 @@ document.querySelector('#next').onclick=()=>{selected=(selected+1)%TASKS.length;
 function manualCopy(text){const el=document.createElement('textarea');el.value=text;document.querySelector('#copyStatus').replaceChildren(el);el.focus();el.select()}
 document.querySelector('#platform').onchange=e=>{platform=e.target.value;save();render()};
 render();
-</script></body></html>
+</script><script src="./course-nav.js" defer></script></body></html>
