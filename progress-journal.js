@@ -4,7 +4,7 @@
  */
 (function(root){'use strict';
 const KEY='ai-course-journal-v1';
-const KNOWN=new Set(['ai-no-headache-v1','ai-course-assessment-v1','ai-course-deep-workshop-v1']);
+const KNOWN=new Set(['ai-no-headache-v1','ai-course-assessment-v1','ai-course-deep-workshop-v1','ai-course-study-lab-v1','ai-course-review-v1','ai-course-platform-choice-v1','ai-course-compare-v1']);
 const WINDOW_MS=15000,MAX_EVENTS=250;
 const obj=v=>v!==null&&typeof v==='object'&&!Array.isArray(v);
 const safeId=id=>typeof id==='string'&&id.length<=90&&/^[a-zA-Z0-9_.:+-]*$/.test(id);
