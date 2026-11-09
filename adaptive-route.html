@@ -30,4 +30,4 @@ function render(){const out=build();document.querySelector('#headline').textCont
 for(const [i,item] of out.entries()){const section=document.createElement('section');section.className='task';const tag=document.createElement('div');tag.className='tag';tag.textContent=(i+1)+'. '+item.category;const title=document.createElement('h3');title.textContent=item.title;const p=document.createElement('p');p.className='muted';p.textContent=item.reason;const link=document.createElement('a');link.className='button'+(i?' secondary':'');link.href=item.url;link.textContent='Перейти к заданию';section.append(tag,title,p,link);area.append(section)}
 }
 document.querySelector('#refresh').onclick=render;window.addEventListener('pageshow',render);render();
-</script></body></html>
+</script><script src="./course-nav.js" defer></script></body></html>
