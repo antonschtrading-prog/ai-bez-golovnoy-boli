@@ -22,4 +22,4 @@ document.querySelector('#copy').onclick=()=>{const p=get(n);const output=l.title
 document.querySelector('#next').onclick=()=>go((n+1)%LESSONS.length);
 }
 state.selected=Math.max(0,Math.min(LESSONS.length-1,Number(state.selected)||0));render();
-</script></body></html>
+</script><script src="./course-nav.js" defer></script></body></html>
