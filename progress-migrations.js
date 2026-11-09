@@ -6,6 +6,7 @@ function prepare(input,deviceId){
  else if(input?.type==='ai-course-progress'&&[3,4,5].includes(input.schemaVersion)){
   envelope=root.CourseSyncModel.makeEnvelope({'ai-no-headache-v1':input.state},{deviceId});
  }else if(input?.format==='ai-course-full-local-backup-v1'){
+  if(!input.items||typeof input.items!=='object'||Array.isArray(input.items))throw Error('Неверная структура старой копии');
   // The old full export also contains diagnostic metadata, not course sections.
   const items={...input.items};delete items['ai-course-journal-v1'];
   envelope=root.CourseSyncModel.fromLegacy({...input,items},deviceId);

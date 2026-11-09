@@ -24,5 +24,16 @@ const http=require('node:http'),fs=require('node:fs'),path=require('node:path'),
  await page.close();const reopened=await context.newPage();await reopened.goto(base+'/deep-practice.html');assert.equal(await reopened.locator('#work').inputValue(),'Версия первая');
  assert.deepEqual(errors,[]);console.log('PASS: all pages load; mobile editing/reload; two-tab conflict; UI restore; history download; migration; page reopen; no page errors');
  await context.close();
+ const profile=fs.mkdtempSync(path.join(require('node:os').tmpdir(),'course-browser-'));
+ const launchOptions={executablePath:process.env.CHROMIUM_PATH||(fs.existsSync('/usr/bin/chromium')?'/usr/bin/chromium':chromium.executablePath()),headless:true,args:['--no-sandbox']};
+ let persistent;
+ try{
+  persistent=await chromium.launchPersistentContext(profile,launchOptions);
+  let p=await persistent.newPage();await p.goto(base+'/deep-practice.html');await p.locator('#work').fill('После полного перезапуска');await persistent.close();persistent=null;
+  persistent=await chromium.launchPersistentContext(profile,launchOptions);
+  p=await persistent.newPage();await p.goto(base+'/deep-practice.html');assert.equal(await p.locator('#work').inputValue(),'После полного перезапуска');
+  console.log('PASS: progress survives full Chromium shutdown and restart with persistent profile');
+ }finally{if(persistent)await persistent.close();fs.rmSync(profile,{recursive:true,force:true})}
+
  }finally{await browser.close();await new Promise(r=>server.close(r))}
 })().catch(e=>{console.error(e);process.exitCode=1});
