@@ -11,9 +11,9 @@ function handler({store,origins=[],botToken}){
   if(req.method==='OPTIONS'){
    res.setHeader('Access-Control-Allow-Methods','GET, PUT, POST, OPTIONS');res.setHeader('Access-Control-Allow-Headers','Authorization, Content-Type, If-Match, Idempotency-Key');return send(204,{});
   }
+  try{
   const token=/^Bearer ([A-Za-z0-9_-]{32,256})$/.exec(req.headers.authorization||'')?.[1];
   const account=token&&store.authenticate(token);if(!account)return send(401,{error:'unauthorized'});
-  try{
    if(req.url==='/v1/progress'&&req.method==='GET'){const data=store.get(account);res.setHeader('ETag',`"${data.revision}"`);return send(200,data)}
    if(req.url==='/v1/progress/versions'&&req.method==='GET')return send(200,{versions:store.history(account)});
    if(!((req.url==='/v1/progress'&&req.method==='PUT')||(req.url==='/v1/telegram/link'&&req.method==='POST')))return send(404,{error:'not_found'});
