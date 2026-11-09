@@ -37,4 +37,4 @@ $('copy').onclick=()=>copyText(state.prompt);
 $('calculate').onclick=summary;$('export').onclick=download;$('copyReport').onclick=()=>copyText(JSON.stringify(report(),null,2));
 $('clear').onclick=()=>{if(confirm('Очистить текущий протокол? Это действие нельзя отменить.')){state=defaultState();persist();render();$('summary').textContent='Данные очищены.'}};
 render();
-</script></body></html>
+</script><script src="./course-nav.js" defer></script></body></html>
