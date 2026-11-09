@@ -23,8 +23,8 @@ function rejectUnsafe(value,depth=0){
  for(const k of keys){if(invalid(k))throw Error('Опасное имя поля '+k);rejectUnsafe(value[k],depth+1)}
 }
 const SHAPES={
-'ai-no-headache-v1':[['completed','array'],['deepDone','array'],['answers','record'],['deepNotes','record'],['levelExams06','record']],
-'ai-course-study-lab-v1':[['terms','record'],['cases','record']],
+'ai-no-headache-v1':[['completed','array'],['deepDone','array'],['answers','record'],['deepAnswers','record'],['deepNotes','record'],['levelExams06','record']],
+'ai-course-study-lab-v1':[['terms','record'],['cases','record'],['notes','record']],
 'ai-course-deep-workshop-v1':[['progress','record']],
 'ai-course-assessment-v1':[['results','record']],
 'ai-course-review-v1':[['items','record']],
@@ -93,6 +93,7 @@ function readEnvelope(x){
 }
 function append(envelope,event){
  const input=readEnvelope(envelope),e=eventShape(event);
+ if(input.events.length>=10000)throw Error('Журнал заполнен: требуется контрольный снимок');
  if(e.deviceId!==input.deviceId)throw Error('Событие принадлежит другому устройству');
  if(input.events.some(x=>x.id===e.id||x.deviceId===e.deviceId&&x.seq===e.seq))
   throw Error('Событие уже существует');

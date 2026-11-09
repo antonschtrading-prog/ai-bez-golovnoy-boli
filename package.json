@@ -1,0 +1,1 @@
+{"name":"ai-bez-golovnoy-boli","private":true,"scripts":{"test":"node --test tests/*.test.cjs","test:browser":"node tests/browser.cjs","start:api":"node server/main.cjs"},"engines":{"node":">=24 <25"},"devDependencies":{"playwright":"1.62.1"}}

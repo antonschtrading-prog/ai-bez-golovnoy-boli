@@ -24,6 +24,9 @@ const labels={
 function audit(local,incoming){
  const proposed={},conflicts=[],merged=[],single=[],unchanged=[];
  if(!record(local)||!record(incoming))throw Error('Обе копии должны быть объектами разделов');
+ // Validate nested keys even in sections present on only one side.
+ root.CourseSyncModel.makeEnvelope(local,{deviceId:'merge-local'});
+ root.CourseSyncModel.makeEnvelope(incoming,{deviceId:'merge-incoming'});
  const allowed=Object.keys(rules);
  for(const key of Object.keys(incoming)){if(!allowed.includes(key))conflicts.push({key,field:'',reason:'Неизвестный раздел'});}
  for(const key of allowed){
