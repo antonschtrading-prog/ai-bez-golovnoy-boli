@@ -22,6 +22,24 @@ function rejectUnsafe(value,depth=0){
  const keys=Object.keys(value);if(keys.length>20000)throw Error('Слишком много полей');
  for(const k of keys){if(invalid(k))throw Error('Опасное имя поля '+k);rejectUnsafe(value[k],depth+1)}
 }
+const SHAPES={
+'ai-no-headache-v1':[['completed','array'],['deepDone','array'],['answers','record'],['deepNotes','record'],['levelExams06','record']],
+'ai-course-study-lab-v1':[['terms','record'],['cases','record']],
+'ai-course-deep-workshop-v1':[['progress','record']],
+'ai-course-assessment-v1':[['results','record']],
+'ai-course-review-v1':[['items','record']],
+'ai-course-platform-choice-v1':[['platform','string']],
+'ai-course-compare-v1':[['aScores','record'],['bScores','record']]
+};
+function checkSectionShape(key,item){
+ for(const [field,kind] of SHAPES[key]||[]){
+  if(!own(item,field))continue;
+  const v=item[field];
+  if(kind==='array'&&!Array.isArray(v))throw Error('Неверный массив '+key+'.'+field);
+  if(kind==='record'&&!obj(v))throw Error('Неверный объект '+key+'.'+field);
+  if(kind==='string'&&typeof v!=='string')throw Error('Неверная строка '+key+'.'+field);
+ }
+}
 function cleanSections(sections){
  if(!obj(sections))throw Error('Разделы должны быть объектом');
  rejectUnsafe(sections);
@@ -29,6 +47,7 @@ function cleanSections(sections){
  for(const k of Object.keys(sections)){
   if(!KEYS.includes(k))throw Error('Неизвестный раздел: '+k);
   if(!obj(sections[k]))throw Error('Неправильная структура раздела '+k);
+  checkSectionShape(k,sections[k]);
   result[k]=deep(sections[k]);
  }
  return result;
@@ -43,6 +62,7 @@ function eventShape(e){
  if(typeof e.at!=='string'||!/^\d{4}-\d{2}-\d{2}T/.test(e.at)||!Number.isFinite(Date.parse(e.at)))throw Error('Неверная дата события');
  if(typeof e.baseRevision!=='number'||!Number.isSafeInteger(e.baseRevision)||e.baseRevision<0)throw Error('Неверная исходная ревизия');
  if(!obj(e.value))throw Error('Значение события должно быть объектом');
+ checkSectionShape(e.section,e.value);
  rejectUnsafe(e.value);
  return {id:e.id,deviceId:e.deviceId,seq:e.seq,section:e.section,kind:e.kind,at:e.at,baseRevision:e.baseRevision,value:deep(e.value)};
 }
