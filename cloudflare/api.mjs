@@ -3,6 +3,7 @@
  */
 import {createD1Store} from './d1-store.mjs';
 import {verifyTelegramMiniApp} from './telegram-auth.mjs';
+import {verifyTelegramOidc} from './telegram-oidc.mjs';
 const MAX=1024*1024;
 const send=(code,data,extra={})=>new Response(JSON.stringify(data),{status:code,headers:{
  'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store',
@@ -26,7 +27,7 @@ async function bodyJSON(request){
   return JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(bytes));
  }catch(e){if(e.status)throw e;throw Object.assign(Error('invalid_json'),{status:400})}
 }
-export function createHandler({db,origins=[],botToken=null}){
+export function createHandler({db,origins=[],botToken=null,oidcClientId=null,jwksFetch=fetch}){
  const store=createD1Store(db);
  const allow=new Set(origins);
  return async(request)=>{
@@ -41,6 +42,29 @@ export function createHandler({db,origins=[],botToken=null}){
    'Access-Control-Max-Age':'300'}});
   const answer=(code,data,extra={})=>send(code,data,{...cors,...extra});
   try{
+   if(path==='/v1/auth/browser/challenge'&&request.method==='POST'){
+    if(!oidcClientId)return answer(503,{error:'browser_login_not_configured'});
+    if(!origin||!allow.has(origin))return answer(403,{error:'origin_required'});
+    const challenge=await store.createOidcChallenge();
+    return answer(200,challenge);
+   }
+   if(path==='/v1/auth/browser'&&request.method==='POST'){
+    if(!oidcClientId)return answer(503,{error:'browser_login_not_configured'});
+    if(!origin||!allow.has(origin))return answer(403,{error:'origin_required'});
+    if(!/^application\/json(?:;|$)/i.test(request.headers.get('content-type')||''))return answer(415,{error:'json_required'});
+    let body;
+    try{body=await bodyJSON(request)}catch(e){return answer(e.status||400,{error:e.status===413?'body_too_large':'invalid_json'})}
+    if(!body||typeof body!=='object'||Array.isArray(body)||Object.keys(body).some(k=>!['idToken','nonce'].includes(k)))return answer(400,{error:'invalid_browser_login'});
+    if(!await store.challengeIsValid(body.nonce))return answer(401,{error:'invalid_browser_login'});
+    let identity;
+    try{identity=await verifyTelegramOidc(body.idToken,{clientId:String(oidcClientId),nonce:body.nonce,fetchImpl:jwksFetch})}
+    catch(_){return answer(401,{error:'invalid_browser_login'})}
+    try{await store.consumeOidcChallenge(body.nonce)}
+    catch(_){return answer(409,{error:'used_or_expired_challenge'})}
+    const account=await store.oidcAccountForVerifiedTelegram(identity.telegramId);
+    const session=await store.issueSession(account);
+    return answer(200,{token:session.token,expires:session.expires,accountId:account});
+   }
    if(path==='/v1/auth/telegram'&&request.method==='POST'){
     if(!botToken)return answer(503,{error:'telegram_not_configured'});
     if(!/^application\/json(?:;|$)/i.test(request.headers.get('content-type')||''))return answer(415,{error:'json_required'});

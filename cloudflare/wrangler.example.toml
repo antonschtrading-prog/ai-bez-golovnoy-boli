@@ -7,6 +7,8 @@ workers_dev = true
 
 [vars]
 COURSE_ORIGINS = "https://antonschtrading-prog.github.io"
+# Public client ID from BotFather Login Widget settings (not the client secret).
+# TELEGRAM_CLIENT_ID = "REPLACE_WITH_BOTFATHER_CLIENT_ID"
 
 [[d1_databases]]
 binding = "DB"
