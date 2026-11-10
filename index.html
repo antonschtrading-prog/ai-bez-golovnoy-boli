@@ -20,7 +20,18 @@ function load(){try{return {...fresh(),...JSON.parse(localStorage.getItem(KEY)||
 function save(){try{window.CourseStorage.write(localStorage,KEY,JSON.stringify(state));window.CourseJournal?.checkpoint(localStorage,KEY,'main')}catch(e){document.querySelector('#saveLabel').textContent='Не сохранено: '+e.message}updateProgress()}
 function escapeHtml(s){return String(s??'').replace(/[&<>"']/g,x=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[x]))}
 function updateProgress(){let done=state.completed.includes('a1-1');document.querySelector('#pct').textContent=done?'100%':'0%';document.querySelector('#bar').style.width=done?'100%':'0%'}
-function navigate(next){view=next;state.lastView=next;save();render();window.scrollTo({top:0,behavior:'instant'})}
+function navigate(next){
+ view=next;state.lastView=next;save();render();
+ if(next==='home'){window.scrollTo({top:0,behavior:'instant'});return}
+ // Every lesson transition should reveal the replaced content, not the page banner.
+ // Otherwise the A1 quiz and practice buttons appear unresponsive on iPhone.
+ const panel=document.querySelector('#main');
+ if(panel){
+  panel.setAttribute('tabindex','-1');
+  panel.focus({preventScroll:true});
+  panel.scrollIntoView({behavior:'instant',block:'start'});
+ }
+}
 function renderNav(){const active=view;document.querySelector('#nav').innerHTML=`<button data-go="home" class="${active==='home'?'active':''}">Обзор курса</button><button data-go="lesson" class="${['lesson','quiz','practice'].includes(active)?'active':''}">A1 · Первый урок ${state.completed.includes('a1-1')?'✓':''}</button><button data-go="catalog" class="${active==='catalog'?'active':''}">Программа A1–C1</button><button data-go="report" class="${active==='report'?'active':''}">Отчёт о практике</button>`;document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>navigate(b.dataset.go))}
 function render(){renderNav();updateProgress();const el=document.querySelector('#main');if(view==='catalog')el.innerHTML=catalog();else if(view==='lesson')el.innerHTML=lesson();else if(view==='quiz')el.innerHTML=quizUI();else if(view==='practice')el.innerHTML=practice();else if(view==='report')el.innerHTML=reportUI();else if(view==='sync')el.innerHTML=syncUI();else el.innerHTML=home();attach()}
 function home(){return `<div class="tag">Маршрут</div><h2>Учимся понимать и делать</h2><p>Пять уровней — от базовых понятий и грамотной работы с ИИ до проектирования собственного решения. Переходы в будущей версии будут зависеть от навыков, а не только от числа просмотренных страниц.</p><div class="cards">${curriculum.map(x=>`<div class="minicard"><div class="step">${x.code}</div><strong>${x.title}</strong><p class="small muted">${x.goal}</p></div>`).join('')}</div><hr class="line"><h3>Первый маршрут</h3><p>Урок → три вопроса → реальная практика в другом чате → загрузка/заполнение отчёта → проверка по критериям.</p><button class="btn" data-next="lesson">Перейти к уроку</button>`}
