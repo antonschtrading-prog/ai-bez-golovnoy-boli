@@ -24,16 +24,18 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px;background:#0c172
 <p><a href="./my-route.html">← Мой учебный маршрут</a></p>
 <h1>Аккаунт и синхронизация</h1>
 <p class="sub">Подготовка общего прогресса для браузера и Telegram Mini App.</p>
-<div class="notice" role="note"><strong>Облако ещё не включено.</strong> Эта страница работает только с данными текущего браузера и файлами, которые ты сам выбираешь. Она ничего не загружает в сеть, не создаёт аккаунт и не меняет ответы уроков.</div>
+<div class="notice" role="note"><strong>Автоматическая синхронизация выключена.</strong> Вход и чтение облачной копии доступны только после настройки Cloudflare и открытия страницы через Telegram Mini App. Ничего не загружается без явного действия; локальный прогресс никогда не заменяется автоматически.</div>
 <section aria-labelledby="account-title">
 <h2 id="account-title">1. Статус аккаунта</h2>
 <dl><dt>Вход</dt><dd id="accountState">Не настроен</dd><dt>Синхронизация</dt><dd id="syncState">Выключена</dd><dt>Локальные разделы</dt><dd id="localCount">Проверяем…</dd></dl>
 <p class="sub">Для настоящего входа позже потребуется бесплатная настройка Telegram и Cloudflare. Текущие локальные работы доступны без регистрации.</p>
+<p><button id="cloudLogin" disabled>Войти через Telegram Mini App</button><button id="cloudRead" disabled class="secondary">Получить облачную копию</button><button id="cloudLogout" disabled class="secondary">Выйти</button></p>
+<p id="cloudStatus" class="status" role="status" aria-live="polite">Проверяем настройку облака…</p>
 <a href="./recovery.html">История версий и восстановление</a>
 </section>
 <section aria-labelledby="preview-title">
 <h2 id="preview-title">2. Предварительный просмотр переноса</h2>
-<p>Выбери экспорт серверного снимка с полями <code>revision</code> и <code>sections</code>. Для проверки без облака можно использовать ранее сохранённый тестовый снимок. Файл не отправляется в интернет.</p>
+<p>После входа можно нажать «Получить облачную копию» выше или выбрать JSON вручную. Выбери экспорт серверного снимка с полями <code>revision</code> и <code>sections</code>. Для проверки без облака можно использовать ранее сохранённый тестовый снимок. Файл не отправляется в интернет.</p>
 <label for="cloudFile">Снимок прогресса JSON</label>
 <p><input id="cloudFile" type="file" accept=".json,application/json"></p>
 <button id="inspect" disabled>Сравнить две копии</button>
@@ -66,5 +68,8 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px;background:#0c172
 <script src="./progress-sync-planner.js"></script>
 <script src="./account-preview.js"></script>
 <script src="./account-preview-page.js"></script>
+<script src="./account-cloud-config.js"></script>
+<script src="./account-cloud.js"></script>
+<script src="./account-cloud-page.js"></script>
 <script src="./course-nav.js" defer></script>
 </body></html>
