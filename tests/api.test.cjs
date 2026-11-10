@@ -14,3 +14,20 @@ test('SQLite failure rolls back all writes',()=>{const s=new Store();s.db.exec("
 test('HTTP size cap and malformed JSON',async t=>{const {call}=await fixture(t);const p=put(0,'operation-1',{});assert.equal((await call(undefined,{...p,body:'{'})).status,400);assert.equal((await call(undefined,{...p,body:'x'.repeat(1024*1024+1)})).status,413)});
 test('expired and revoked sessions cannot access progress',async t=>{const {store,call}=await fixture(t);store.db.prepare('UPDATE sessions SET expires=0 WHERE account=?').run('a');assert.equal((await call()).status,401);store.db.prepare('DELETE FROM sessions WHERE account=?').run('b');assert.equal((await call(undefined,{headers:{Authorization:'Bearer '+tokenB}})).status,401)});
 test('authentication storage failure returns sanitized 500 and service recovers',async t=>{const {store,call}=await fixture(t);const auth=store.authenticate.bind(store);store.authenticate=()=>{throw Error('private database path')};const result=await call();assert.equal(result.status,500);assert.deepEqual(result.body,{error:'storage_failure'});store.authenticate=auth;assert.equal((await call()).status,200)});
+
+test('trusted server issues unpredictable hashed sessions and revokes all devices',()=>{
+ const s=new Store();
+ try{
+  const one=s.issueSession('accountA',60000),two=s.issueSession('accountA',60000);
+  assert.notEqual(one.token,two.token);
+  assert.match(one.token,/^[A-Za-z0-9_-]{32,256}$/);
+  assert.equal(s.authenticate(one.token),'accountA');
+  const stored=s.db.prepare('SELECT token FROM sessions').all().map(x=>x.token);
+  assert(!stored.includes(one.token));assert(!stored.includes(two.token));
+  assert.equal(s.revokeAll('accountA'),2);
+  assert.equal(s.authenticate(one.token),undefined);
+  assert.equal(s.authenticate(two.token),undefined);
+  assert.throws(()=>s.issueSession('bad/account'),/Invalid account/);
+  assert.throws(()=>s.issueSession('accountA',1000),/Invalid session lifetime/);
+ }finally{s.close()}
+});

@@ -13,7 +13,7 @@ function create({baseURL,getToken,fetchImpl=root.fetch.bind(root)}){
   if(!response.ok)throw Error(body.error||'Request failed');
   return body;
  }
- return Object.freeze({read:()=>request('/v1/progress'),versions:()=>request('/v1/progress/versions'),
+ return Object.freeze({session:()=>request('/v1/session'),logout:()=>request('/v1/session',{method:'DELETE'}),read:()=>request('/v1/progress'),versions:()=>request('/v1/progress/versions'),
   save:(sections,revision,operationId)=>request('/v1/progress',{method:'PUT',headers:{'Content-Type':'application/json','If-Match':`"${revision}"`,'Idempotency-Key':operationId},body:JSON.stringify({sections})}),
   linkTelegram:initData=>request('/v1/telegram/link',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({initData})})});
 }
