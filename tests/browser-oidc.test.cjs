@@ -42,7 +42,7 @@ async function fixture(t){
  };
  function jwt(nonce,overrides={}){
   const now=Math.floor(Date.now()/1000);
-  const claims={iss:'https://oauth.telegram.org',aud:clientId,sub:'987654321',nonce,iat:now,exp:now+300,...overrides};
+  const claims={iss:'https://oauth.telegram.org',aud:clientId,sub:'1234123412341234123',id:987654321,nonce,iat:now,exp:now+300,...overrides};
   const text=b64({alg:'RS256',typ:'JWT',kid:'test-rsa'})+'.'+b64(claims);
   return text+'.'+sign('RSA-SHA256',Buffer.from(text),privateKey).toString('base64url');
  }
@@ -64,7 +64,7 @@ test('Mini App and browser OIDC resolve to exactly one account',async t=>{
 });
 test('browser OIDC denies mismatched signature, issuer, audience, nonce and altered subject',async t=>{
  const f=await fixture(t),c=await f.post('/v1/auth/browser/challenge',{});
- for(const claims of [{aud:'wrong'},{iss:'https://attacker.example'},{nonce:'not-the-real-challenge'},{sub:'-1'},{exp:0},{iat:Math.floor(Date.now()/1000)+1000}]){
+ for(const claims of [{aud:'wrong'},{iss:'https://attacker.example'},{nonce:'not-the-real-challenge'},{sub:'-1'},{id:undefined},{id:0},{exp:0},{iat:Math.floor(Date.now()/1000)+1000}]){
   const response=await f.post('/v1/auth/browser',{idToken:f.jwt(c.body.nonce,claims),nonce:c.body.nonce});
   assert.equal(response.status,401);
  }
