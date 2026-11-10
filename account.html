@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0b1120"><title>Мой аккаунт и синхронизация — ИИ без головной боли</title>
+<style>
+:root{color-scheme:dark;font:16px/1.55 system-ui,-apple-system,Segoe UI,sans-serif;background:#0b1120;color:#edf4ff}
+*{box-sizing:border-box}body{margin:0}main{max-width:900px;margin:auto;padding:20px 16px 70px}
+h1{font-size:clamp(26px,5vw,40px);line-height:1.18}h2{font-size:21px;margin:0 0 8px}a{color:#aeedc1}
+section{background:#17263e;border:1px solid #425b79;border-radius:16px;padding:20px;margin:18px 0}
+p{margin:8px 0 13px}.sub{color:#bbcde0}.notice{border-left:4px solid #e6c88d;padding:9px 12px;background:#243149;border-radius:5px}
+button,input{font:inherit}button{border:1px solid #a6d5b6;background:#a9e9bf;color:#102519;font-weight:700;border-radius:10px;padding:10px 16px;cursor:pointer;margin:7px 9px 7px 0}
+button.secondary{background:#28415d;border-color:#6c8faa;color:#f5fbff}button:disabled{opacity:.46;cursor:not-allowed}
+button:focus-visible,a:focus-visible,input:focus-visible{outline:3px solid #f6d99d;outline-offset:2px}
+input[type=file]{max-width:100%;padding:9px;background:#263e59;border-radius:8px}
+dl{display:grid;grid-template-columns:minmax(120px,1fr) 2fr;gap:6px;margin:6px 0}
+dt{color:#b8c9df}dd{margin:0;font-weight:650;overflow-wrap:anywhere}
+#conflicts{padding-left:20px}#conflicts li{padding:7px 0;overflow-wrap:anywhere}
+pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px;background:#0c1728;padding:12px;border-radius:9px;max-height:260px;overflow:auto}
+[hidden]{display:none!important}.success{color:#a9e9bf}.danger{color:#f1aaa8}
+.status{min-height:1.6em}footer{font-size:13px;color:#b3c4d9}
+</style></head>
+<body><main>
+<p><a href="./my-route.html">← Мой учебный маршрут</a></p>
+<h1>Аккаунт и синхронизация</h1>
+<p class="sub">Подготовка общего прогресса для браузера и Telegram Mini App.</p>
+<div class="notice" role="note"><strong>Облако ещё не включено.</strong> Эта страница работает только с данными текущего браузера и файлами, которые ты сам выбираешь. Она ничего не загружает в сеть, не создаёт аккаунт и не меняет ответы уроков.</div>
+<section aria-labelledby="account-title">
+<h2 id="account-title">1. Статус аккаунта</h2>
+<dl><dt>Вход</dt><dd id="accountState">Не настроен</dd><dt>Синхронизация</dt><dd id="syncState">Выключена</dd><dt>Локальные разделы</dt><dd id="localCount">Проверяем…</dd></dl>
+<p class="sub">Для настоящего входа позже потребуется бесплатная настройка Telegram и Cloudflare. Текущие локальные работы доступны без регистрации.</p>
+<a href="./recovery.html">История версий и восстановление</a>
+</section>
+<section aria-labelledby="preview-title">
+<h2 id="preview-title">2. Предварительный просмотр переноса</h2>
+<p>Выбери экспорт серверного снимка с полями <code>revision</code> и <code>sections</code>. Для проверки без облака можно использовать ранее сохранённый тестовый снимок. Файл не отправляется в интернет.</p>
+<label for="cloudFile">Снимок прогресса JSON</label>
+<p><input id="cloudFile" type="file" accept=".json,application/json"></p>
+<button id="inspect" disabled>Сравнить две копии</button>
+<button id="clear" class="secondary">Очистить сравнение</button>
+<p id="previewStatus" class="status" role="status" aria-live="polite">Сначала выбери файл для просмотра.</p>
+<div id="comparison" hidden>
+<dl><dt>Локальных разделов</dt><dd id="localMetric"></dd><dt>В файле</dt><dd id="cloudMetric"></dd><dt>Ревизия в файле</dt><dd id="revisionMetric"></dd><dt>Конфликтов</dt><dd id="conflictMetric"></dd></dl>
+<div id="conflictArea" hidden>
+<h3>Различия, требующие твоего решения</h3>
+<p class="danger">Автоматическая замена недоступна. Обе версии нужно сохранить и сравнить вручную.</p>
+<ul id="conflicts"></ul>
+</div>
+<div id="safeArea" hidden>
+<p class="success">Совместимый предварительный план. Локальные и серверные данные остаются без изменений.</p>
+<button id="export">Скачать объединённый предварительный снимок</button>
+</div>
+<details><summary>Технические параметры сравнения</summary><pre id="technical"></pre></details>
+</div>
+</section>
+<section aria-labelledby="safety-title">
+<h2 id="safety-title">3. Перед подключением синхронизации</h2>
+<p>Никакого автоматического переноса старого прогресса при входе не будет. Сначала покажем сравнение, затем запросим явное подтверждение. Конфликты одного и того же ответа должны решаться отдельно.</p>
+<p class="sub">Внимание: скачанный JSON может содержать тексты твоих работ. Не пересылай его посторонним.</p>
+</section>
+<footer>Бесплатная архитектура: GitHub Pages, Cloudflare Workers Free, D1 Free и Telegram. Здесь нет платных библиотек или сетевых запросов.</footer>
+</main>
+<script src="./progress-sync-model.js"></script>
+<script src="./progress-core.js"></script>
+<script src="./progress-merge-rules.js"></script>
+<script src="./progress-sync-planner.js"></script>
+<script src="./account-preview.js"></script>
+<script src="./account-preview-page.js"></script>
+<script src="./course-nav.js" defer></script>
+</body></html>
