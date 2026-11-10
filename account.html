@@ -24,12 +24,13 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px;background:#0c172
 <p><a href="./my-route.html">← Мой учебный маршрут</a></p>
 <h1>Аккаунт и синхронизация</h1>
 <p class="sub">Подготовка общего прогресса для браузера и Telegram Mini App.</p>
-<div class="notice" role="note"><strong>Автоматическая синхронизация выключена.</strong> Вход и чтение облачной копии доступны только после настройки Cloudflare и открытия страницы через Telegram Mini App. Ничего не загружается без явного действия; локальный прогресс никогда не заменяется автоматически.</div>
+<div class="notice" role="note"><strong>Автоматическая синхронизация выключена.</strong> Вход и чтение облачной копии доступны после настройки Cloudflare и Telegram: через Mini App или отдельный вход в браузере. Ничего не загружается без явного действия; локальный прогресс никогда не заменяется автоматически.</div>
 <section aria-labelledby="account-title">
 <h2 id="account-title">1. Статус аккаунта</h2>
 <dl><dt>Вход</dt><dd id="accountState">Не настроен</dd><dt>Синхронизация</dt><dd id="syncState">Выключена</dd><dt>Локальные разделы</dt><dd id="localCount">Проверяем…</dd></dl>
 <p class="sub">Для настоящего входа позже потребуется бесплатная настройка Telegram и Cloudflare. Текущие локальные работы доступны без регистрации.</p>
 <p><button id="cloudLogin" disabled>Войти через Telegram Mini App</button><button id="cloudRead" disabled class="secondary">Получить облачную копию</button><button id="cloudLogout" disabled class="secondary">Выйти</button></p>
+<p><button id="browserPrepare" disabled class="secondary">Подготовить вход в браузере</button><button id="browserAuthorize" hidden disabled>Подтвердить вход через Telegram</button></p>
 <p id="cloudStatus" class="status" role="status" aria-live="polite">Проверяем настройку облака…</p>
 <a href="./recovery.html">История версий и восстановление</a>
 </section>
@@ -59,7 +60,7 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px;background:#0c172
 <h2 id="cloud-upload-title">3. Подтверждённая отправка в облако</h2>
 <p>Только после входа через Telegram. Сначала получи и сравни <strong>актуальные</strong> серверную и локальную копии. Никакого автоматического сохранения на сервере нет.</p>
 <button id="cloudPrepare" disabled>Проверить перед отправкой</button>
-<p id="cloudWriteStatus" role="status" aria-live="polite" class="status">Войдите через Telegram, чтобы подготовить отправку.</p>
+<p id="cloudWriteStatus" role="status" aria-live="polite" class="status">После авторизации можно подготовить отправку.</p>
 <div id="cloudApproval" hidden>
 <p id="cloudProposalDetails"></p>
 <label><input id="cloudConfirmed" type="checkbox"> Я проверил локальные работы и резервную копию, согласен отправить объединённый снимок в свой облачный аккаунт.</label>
