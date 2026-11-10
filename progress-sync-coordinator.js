@@ -33,7 +33,8 @@ function create({client,storage,forgetCredentials,randomUUID=()=>root.crypto.ran
   const plan=root.CourseSyncPlanner.prepare(localSections,remote);
   return {status:plan.status,conflicts:plan.conflicts,summary:plan.summary,revision:plan.revision,proposed:plan.proposed?clone(plan.proposed):null};
  }
- async function queue(localSections){
+ async function queue(localSections,options={}){
+  if(options.confirmed!==true)throw Error('Explicit consent to transfer local progress required');
   const session=requireActive();
   if(session.outbox.read().pending)throw Error('Pending copy must be resolved first');
   const plan=await preview(localSections);
