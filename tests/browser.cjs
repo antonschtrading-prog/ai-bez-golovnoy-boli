@@ -84,8 +84,8 @@ const http=require('node:http'),fs=require('node:fs'),path=require('node:path'),
  await page.locator('#continueBtn').click();
  assert.match(await page.locator('#main').innerText(),/Что получилось на самом деле/);
  assert.match(await page.locator('[data-field="task"]').inputValue(),/Задача для сохранения черновика/);
- assert.match(await page.locator('#pct').innerText(),/0%/);
- assert.match(await page.locator('aside.panel').innerText(),/Первый урок A1/);
+ assert.match(await page.locator('#pct').innerText(),/^0\/\d+$/);
+ assert.match(await page.locator('aside.panel').innerText(),/Завершено занятий/);
  await page.locator('#evaluate').click();
  assert.equal(await page.locator('#markDone').count(),0,'Incomplete report cannot be completed');
  for(const field of ['result','verification','reflection'])
@@ -93,12 +93,12 @@ const http=require('node:http'),fs=require('node:fs'),path=require('node:path'),
  await page.locator('#evaluate').click();
  assert.equal(await page.locator('#markDone').count(),1,'Complete report should offer manual completion');
  await page.locator('#markDone').click();
- assert.match(await page.locator('#pct').innerText(),/100%/);
- // The 100% belongs only to the first A1 lesson, never the complete A1–C1 course.
- assert.match(await page.locator('aside.panel').innerText(),/Первый урок A1/);
+ assert.match(await page.locator('#pct').innerText(),/^1\/\d+$/);
+ // A1 completion increments the shared lesson counter; never display 100% of the course.
+ assert.match(await page.locator('aside.panel').innerText(),/Завершено занятий/);
  assert.equal((await page.evaluate(()=>JSON.parse(localStorage.getItem('ai-no-headache-v1')).completed)).includes('a1-1'),true);
  await page.reload();
- assert.match(await page.locator('#pct').innerText(),/100%/);
+ assert.match(await page.locator('#pct').innerText(),/^1\/\d+$/);
  await page.locator('#catalogBtn').click();
  assert.match(await page.locator('#main').innerText(),/Программа|A1/);
  const catalogTop=await page.evaluate(()=>document.querySelector('#main').getBoundingClientRect().top);
