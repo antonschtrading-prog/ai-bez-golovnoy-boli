@@ -11,6 +11,9 @@ const http=require('node:http'),fs=require('node:fs'),path=require('node:path'),
  for(const name of fs.readdirSync(root).filter(n=>n.endsWith('.html'))){await page.goto(base+'/'+name);await page.waitForLoadState('load');assert(await page.locator('body').innerText(),name);}
  // Regression: hero button must visibly move to the lesson on a narrow mobile screen.
  await page.goto(base+'/index.html');
+ // A previously saved overview must never make Continue reopen the overview.
+ await page.evaluate(()=>localStorage.setItem('ai-no-headache-v1',JSON.stringify({completed:[],answers:{},report:{task:'',result:'',verification:'',reflection:''},lastView:'home'})));
+ await page.reload();
  await page.locator('#continueBtn').click();
  await page.waitForTimeout(80);
  assert.match(await page.locator('#main').innerText(),/A1 · Урок 1/);
