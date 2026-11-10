@@ -9,6 +9,40 @@ const http=require('node:http'),fs=require('node:fs'),path=require('node:path'),
  const context=await browser.newContext({viewport:{width:390,height:844},acceptDownloads:true});
  const page=await context.newPage();page.on('pageerror',e=>errors.push(e.message));
  for(const name of fs.readdirSync(root).filter(n=>n.endsWith('.html'))){await page.goto(base+'/'+name);await page.waitForLoadState('load');assert(await page.locator('body').innerText(),name);}
+ // Multi-section mobile navigation: selecting a topic must display its content.
+ for(const scenario of [
+  {file:'deep-practice.html',button:'#nav [data-go="1"]'},
+  {file:'assessment.html',button:'#nav [data-level="A2"]'},
+  {file:'review.html',button:'#list [data-go="1"]'},
+  {file:'any-ai.html',button:'#nav [data-task="1"]'}
+ ]){
+  await page.goto(base+'/'+scenario.file);
+  const before=await page.locator('#content').innerText();
+  await page.locator(scenario.button).click();
+  const after=await page.locator('#content').innerText();
+  assert.notEqual(after,before,scenario.file+' should change the active lesson');
+  const p=await page.evaluate(()=>{
+   const e=document.querySelector('#content'),r=e.getBoundingClientRect();
+   return {top:r.top,scrollY:window.scrollY,focused:document.activeElement===e};
+  });
+  assert(p.top>=-4&&p.top<190,scenario.file+' lesson is not visible on mobile: '+JSON.stringify(p));
+  assert(p.focused,scenario.file+' selected lesson should receive focus');
+ }
+ // Keep partially completed work after changing topics and reloading.
+ await page.goto(base+'/assessment.html');
+ await page.locator('#nav [data-level="A1"]').click();
+ await page.locator('#work').fill('Черновик ответа для оценки, не удалять');
+ await page.locator('#nav [data-level="A2"]').click();
+ await page.reload();
+ await page.locator('#nav [data-level="A1"]').click();
+ assert.equal(await page.locator('#work').inputValue(),'Черновик ответа для оценки, не удалять');
+ await page.goto(base+'/review.html');
+ await page.locator('#list [data-go="0"]').click();
+ await page.locator('#work').fill('Черновик повторения');
+ await page.locator('#list [data-go="1"]').click();
+ await page.reload();
+ await page.locator('#list [data-go="0"]').click();
+ assert.equal(await page.locator('#work').inputValue(),'Черновик повторения');
  // Regression: hero button must visibly move to the lesson on a narrow mobile screen.
  await page.goto(base+'/index.html');
  // A previously saved overview must never make Continue reopen the overview.
@@ -51,7 +85,7 @@ const http=require('node:http'),fs=require('node:fs'),path=require('node:path'),
  const catalogTop=await page.evaluate(()=>document.querySelector('#main').getBoundingClientRect().top);
  assert(catalogTop>=-3&&catalogTop<180,'Catalog must be visible: '+catalogTop);
  await page.goto(base+'/account.html');
- await page.evaluate(()=>localStorage.setItem('ai-no-headache-v1',JSON.stringify({deepNotes:{work:'local version'}})));
+ await page.evaluate(()=>{localStorage.clear();localStorage.setItem('ai-no-headache-v1',JSON.stringify({deepNotes:{work:'local version'}}))});
  await page.reload();
  assert.match(await page.locator('#localCount').innerText(),/1/);
  const conflictFile=JSON.stringify({revision:2,sections:{'ai-no-headache-v1':{deepNotes:{work:'remote version'}}}});
