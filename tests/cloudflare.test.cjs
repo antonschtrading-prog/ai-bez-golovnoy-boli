@@ -92,3 +92,54 @@ test('D1 batch rolls back progress on audit failure',async t=>{
  assert.equal((await f.req(f.token1)).body.revision,0);
  assert.equal((await f.req(f.token1,'/v1/progress/versions')).body.versions.length,0);
 });
+
+function signedTelegram({botToken='test-bot-secret',userId=345,now=Date.now(),nonce='A'}={}){
+ const {createHmac}=require('node:crypto');
+ const fields=new URLSearchParams({auth_date:String(Math.floor(now/1000)),query_id:nonce,user:JSON.stringify({id:userId,first_name:'Test'})});
+ const check=[...fields].sort(([a],[b])=>a<b?-1:a>b?1:0).map(([k,v])=>k+'='+v).join('\n');
+ const secret=createHmac('sha256','WebAppData').update(botToken).digest();
+ fields.set('hash',createHmac('sha256',secret).update(check).digest('hex'));
+ return fields.toString();
+}
+test('verified Telegram Mini App login issues revocable free account session',async t=>{
+ const db=mockD1();t.after(db.close);
+ const {createHandler}=await import('../cloudflare/api.mjs');
+ const handler=createHandler({db,botToken:'test-bot-secret',origins:['https://antonschtrading-prog.github.io']});
+ const post=async raw=>{const r=await handler(new Request('https://api.example/v1/auth/telegram',{method:'POST',
+  headers:{'Content-Type':'application/json',Origin:'https://antonschtrading-prog.github.io'},
+  body:JSON.stringify({initData:raw})}));return{status:r.status,body:await r.json()}};
+ const raw=signedTelegram();
+ const login=await post(raw);
+ assert.equal(login.status,200);assert.match(login.body.token,/^[A-Za-z0-9_-]{32,256}$/);
+ assert.match(login.body.accountId,/^tg_[a-f0-9]{32}$/);
+ assert.equal((await post(raw)).status,409);
+ const repeat=await post(signedTelegram({nonce:'B'}));
+ assert.equal(repeat.status,200);assert.equal(repeat.body.accountId,login.body.accountId);
+ const session=await handler(new Request('https://api.example/v1/session',{headers:{Authorization:'Bearer '+login.body.token}}));
+ assert.equal((await session.json()).accountId,login.body.accountId);
+});
+test('Telegram Mini App rejects tampering, expired data, duplicate fields and чужой user ID',async t=>{
+ const db=mockD1();t.after(db.close);
+ const {createHandler}=await import('../cloudflare/api.mjs');
+ const handler=createHandler({db,botToken:'test-bot-secret',origins:['https://course.example']});
+ const call=async initData=>{
+  const r=await handler(new Request('https://api.example/v1/auth/telegram',{
+   method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({initData})
+  }));return r.status;
+ };
+ const valid=signedTelegram();
+ assert.equal(await call(valid.replace('345','777')),401);
+ assert.equal(await call(signedTelegram({now:Date.now()-900000})),401);
+ assert.equal(await call(valid+'&user=%7B%22id%22%3A999%7D'),401);
+ assert.equal(await call(signedTelegram({userId:-2})),401);
+ assert.equal(await call(signedTelegram({nonce:'wrong',botToken:'other-secret'})),401);
+});
+test('Telegram login unavailable without configured token',async t=>{
+ const db=mockD1();t.after(db.close);
+ const {createHandler}=await import('../cloudflare/api.mjs');
+ const handler=createHandler({db});
+ const r=await handler(new Request('https://api.example/v1/auth/telegram',{
+  method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({initData:signedTelegram()})
+ }));
+ assert.equal(r.status,503);
+});
