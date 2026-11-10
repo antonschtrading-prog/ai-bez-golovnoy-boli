@@ -61,6 +61,10 @@ const http=require('node:http'),fs=require('node:fs'),path=require('node:path'),
  await page.locator('#continueBtn').click();
  await page.locator('[data-next="quiz"]').click();
  assert.match(await page.locator('#main').innerText(),/Три ситуации из практики/);
+ // A wrong or missing answer cannot unlock the practical assignment.
+ assert.equal(await page.locator('[data-next="practice"]').isDisabled(),true);
+ await page.locator('[data-answer="0:0"]').click();
+ assert.equal(await page.locator('[data-next="practice"]').isDisabled(),true);
  let position=await page.locator('#main').evaluate(el=>el.getBoundingClientRect().top);
  assert(position>=-4&&position<180,'Quiz not visible on iPhone: '+position);
  for(const [question,answer] of [[0,1],[1,1],[2,1]]){
@@ -80,6 +84,21 @@ const http=require('node:http'),fs=require('node:fs'),path=require('node:path'),
  await page.locator('#continueBtn').click();
  assert.match(await page.locator('#main').innerText(),/Что получилось на самом деле/);
  assert.match(await page.locator('[data-field="task"]').inputValue(),/Задача для сохранения черновика/);
+ assert.match(await page.locator('#pct').innerText(),/^0\/\d+$/);
+ assert.match(await page.locator('aside.panel').innerText(),/Завершено занятий/);
+ await page.locator('#evaluate').click();
+ assert.equal(await page.locator('#markDone').count(),0,'Incomplete report cannot be completed');
+ for(const field of ['result','verification','reflection'])
+  await page.locator('[data-field="'+field+'"]').fill('Подробное обоснование и проверка работы для проверки заполнения');
+ await page.locator('#evaluate').click();
+ assert.equal(await page.locator('#markDone').count(),1,'Complete report should offer manual completion');
+ await page.locator('#markDone').click();
+ assert.match(await page.locator('#pct').innerText(),/^1\/\d+$/);
+ // A1 completion increments the shared lesson counter; never display 100% of the course.
+ assert.match(await page.locator('aside.panel').innerText(),/Завершено занятий/);
+ assert.equal((await page.evaluate(()=>JSON.parse(localStorage.getItem('ai-no-headache-v1')).completed)).includes('a1-1'),true);
+ await page.reload();
+ assert.match(await page.locator('#pct').innerText(),/^1\/\d+$/);
  await page.locator('#catalogBtn').click();
  assert.match(await page.locator('#main').innerText(),/Программа|A1/);
  const catalogTop=await page.evaluate(()=>document.querySelector('#main').getBoundingClientRect().top);
