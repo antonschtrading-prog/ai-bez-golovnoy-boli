@@ -15,6 +15,7 @@ class Store{
  }
  provision(account,token,expires){this.db.prepare('INSERT INTO sessions VALUES(?,?,?)').run(digest(token),account,expires)}
  authenticate(token){return this.db.prepare('SELECT account FROM sessions WHERE token=? AND expires>?').get(digest(token),Date.now())?.account}
+ revoke(token){return this.db.prepare('DELETE FROM sessions WHERE token=?').run(digest(token)).changes===1}
  get(account){const r=this.db.prepare('SELECT revision,sections FROM progress WHERE account=?').get(account);return r?{revision:r.revision,sections:JSON.parse(r.sections)}:{revision:0,sections:{}}}
  history(account){return this.db.prepare('SELECT revision,sections,at FROM versions WHERE account=? ORDER BY revision DESC LIMIT 50').all(account).map(x=>({...x,sections:JSON.parse(x.sections)}))}
  put(account,id,base,sections){
