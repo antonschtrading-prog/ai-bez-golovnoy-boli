@@ -1,6 +1,6 @@
 'use strict';
 const {DatabaseSync}=require('node:sqlite');
-const {createHash}=require('node:crypto');
+const {createHash,randomBytes}=require('node:crypto');
 const digest=x=>createHash('sha256').update(x).digest('hex');
 class Store{
  constructor(path=':memory:'){
@@ -14,6 +14,22 @@ class Store{
    CREATE TABLE IF NOT EXISTS replays(hash TEXT PRIMARY KEY, expires INTEGER NOT NULL);`);
  }
  provision(account,token,expires){this.db.prepare('INSERT INTO sessions VALUES(?,?,?)').run(digest(token),account,expires)}
+ /* Only trusted backend code may call this after a verified identity exchange.
+  * Deliberately no public endpoint for issuing an arbitrary account's token.
+  */
+ issueSession(account,ttlMs=7*24*60*60*1000){
+  if(typeof account!=='string'||! /^[A-Za-z0-9_-]{1,128}$/.test(account))throw Error('Invalid account id');
+  if(!Number.isSafeInteger(ttlMs)||ttlMs<60000||ttlMs>30*24*60*60*1000)throw Error('Invalid session lifetime');
+  const token=randomBytes(32).toString('base64url');
+  const expires=Date.now()+ttlMs;
+  this.provision(account,token,expires);
+  return {token,expires};
+ }
+ revokeAll(account){
+  if(typeof account!=='string'||! /^[A-Za-z0-9_-]{1,128}$/.test(account))throw Error('Invalid account id');
+  return this.db.prepare('DELETE FROM sessions WHERE account=?').run(account).changes;
+ }
+
  authenticate(token){return this.db.prepare('SELECT account FROM sessions WHERE token=? AND expires>?').get(digest(token),Date.now())?.account}
  revoke(token){return this.db.prepare('DELETE FROM sessions WHERE token=?').run(digest(token)).changes===1}
  get(account){const r=this.db.prepare('SELECT revision,sections FROM progress WHERE account=?').get(account);return r?{revision:r.revision,sections:JSON.parse(r.sections)}:{revision:0,sections:{}}}
