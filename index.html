@@ -264,7 +264,7 @@ window.CourseDataAPI.schemaVersion=6;
   panel.focus({preventScroll:true});
   panel.scrollIntoView({behavior:'auto',block:'start'});
  }
- document.querySelector('#continueBtn').onclick=()=>openCourseSection(state.lastView==='sync'?'lesson':state.lastView||'lesson');
+ document.querySelector('#continueBtn').onclick=()=>openCourseSection(!state.lastView||['home','catalog','sync'].includes(state.lastView)?'lesson':state.lastView);
  document.querySelector('#catalogBtn').onclick=()=>openCourseSection('catalog');
  document.querySelector('#syncBtn').onclick=()=>openCourseSection('sync');
  render();
