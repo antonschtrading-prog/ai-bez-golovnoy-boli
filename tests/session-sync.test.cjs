@@ -43,9 +43,9 @@ test('two devices sync through the real HTTP API without losing independent draf
  assert.equal(p.accountId,'shared_account');
  assert.equal(m.accountId,p.accountId);
  assert.equal(o.accountId,'separate_account');
- assert.equal((await phone.coord.queue({[K]:{deepNotes:{phone:'first'}}})).status,'queued');
+ assert.equal((await phone.coord.queue({[K]:{deepNotes:{phone:'first'}}},{confirmed:true})).status,'queued');
  assert.equal((await phone.coord.send()).status,'synced');
- assert.equal((await mac.coord.queue({[K]:{deepNotes:{mac:'second'}}})).status,'queued');
+ assert.equal((await mac.coord.queue({[K]:{deepNotes:{mac:'second'}}},{confirmed:true})).status,'queued');
  assert.equal((await mac.coord.send()).status,'synced');
  const result=await phone.client.read();
  assert.equal(result.revision,2);
@@ -56,8 +56,8 @@ test('an offline device retains pending changes until the user resolves server c
  const {baseURL}=await fixture(t);
  const phone=device(baseURL,tokenA,new Memory()),mac=device(baseURL,tokenB,new Memory());
  await phone.coord.connect();await mac.coord.connect();
- await phone.coord.queue({[K]:{deepNotes:{phone:'offline'}}});
- await mac.coord.queue({[K]:{deepNotes:{mac:'online'}}});
+ await phone.coord.queue({[K]:{deepNotes:{phone:'offline'}}},{confirmed:true});
+ await mac.coord.queue({[K]:{deepNotes:{mac:'online'}}},{confirmed:true});
  assert.equal((await mac.coord.send()).status,'synced');
  assert.equal((await phone.coord.send()).status,'conflict');
  assert.equal(phone.coord.pending().pending.sections[K].deepNotes.phone,'offline');
@@ -68,7 +68,7 @@ test('server-verified logout revokes token and leaves pending drafts recoverable
  const {baseURL}=await fixture(t);
  const memory=new Memory(),phone=device(baseURL,tokenA,memory);
  await phone.coord.connect();
- await phone.coord.queue({[K]:{deepNotes:{a:'keep'}}});
+ await phone.coord.queue({[K]:{deepNotes:{a:'keep'}}},{confirmed:true});
  const before=phone.coord.pending().pending.id;
  const signedOut=await phone.coord.signOut();
  assert.equal(signedOut.signedOut,true);
@@ -97,4 +97,30 @@ test('sign out clears credentials even when server is offline, with honest statu
  assert.equal(result.signedOut,true);assert.equal(result.serverRevoked,false);
  assert.equal(result.serverError,'server_revocation_unconfirmed');
  assert.equal(cleared,true);
+});
+
+test('account transfer requires explicit user confirmation',async()=>{
+ const c={session:async()=>({authenticated:true,accountId:'signed_in_account'}),read:async()=>({revision:0,sections:{}}),save:async()=>({}),logout:async()=>({signedOut:true})};
+ const memory=new Memory();
+ const coord=CourseSyncCoordinator.create({client:c,storage:memory,forgetCredentials:()=>{},randomUUID:()=>'operation-00001'});
+ await coord.connect();
+ await assert.rejects(()=>coord.queue({[K]:{completed:['one']}}),/Explicit consent/);
+ assert.equal(coord.pending().pending,null);
+ const queued=await coord.queue({[K]:{completed:['one']}},{confirmed:true});
+ assert.equal(queued.status,'queued');
+});
+test('account switch or sign-out during remote read cannot queue stale progress',async()=>{
+ let resolveRead;
+ const c={session:async()=>({authenticated:true,accountId:'account-A'}),read:()=>new Promise(r=>{resolveRead=r}),save:async()=>({}),logout:async()=>({signedOut:true})};
+ const memory=new Memory();
+ const coord=CourseSyncCoordinator.create({client:c,storage:memory,forgetCredentials:()=>{},randomUUID:()=>'operation-00001'});
+ await coord.connect();
+ const pending=coord.queue({[K]:{deepNotes:{x:'draft'}}},{confirmed:true});
+ // Wait for the asynchronous read to start.
+ for(let i=0;i<5&&!resolveRead;i++)await Promise.resolve();
+ assert.equal(typeof resolveRead,'function');
+ await coord.signOut();
+ resolveRead({revision:0,sections:{}});
+ await assert.rejects(pending,/Session changed/);
+ assert.equal(memory.getItem('ai-course-outbox-v1:account-A'),null);
 });
