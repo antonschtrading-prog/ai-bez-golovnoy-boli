@@ -28,6 +28,20 @@ const http=require('node:http'),fs=require('node:fs'),path=require('node:path'),
    stale:stale.conflict===true,invalid};
  });
  assert.deepEqual(indexedResult,{success:1,conflict:1,revision:1,isolated:true,stale:true,invalid:true});
+ // Actual separate tabs, same browser origin and IndexedDB database.
+ const crossPage=await context.newPage();
+ await crossPage.goto(base+'/deep-practice.html');
+ await crossPage.addScriptTag({url:base+'/progress-indexeddb.js'});
+ const crossTask=async source=>source.evaluate(async()=>{
+  const db=await CourseIndexedStore.open({dbName:'course-test-cross-tab-v1'});
+  const r=await db.update('account-C','ai-no-headache-v1',0,{completed:['done']});
+  db.close();return r;
+ });
+ const crossResults=await Promise.all([crossTask(page),crossTask(crossPage)]);
+ assert.equal(crossResults.filter(x=>x?.revision===1).length,1);
+ assert.equal(crossResults.filter(x=>x?.conflict===true).length,1);
+ await crossPage.close();
+
  await page.goto(base+'/deep-practice.html');await page.locator('#work').fill('Версия первая');await page.locator('#work').fill('Версия вторая');await page.reload();assert.equal(await page.locator('#work').inputValue(),'Версия вторая');
  const second=await context.newPage();await second.goto(base+'/deep-practice.html');await page.locator('#work').fill('Из первой вкладки');await second.locator('#work').fill('Конфликт второй вкладки');
  assert(await second.evaluate(()=>CourseStorage.list(localStorage).some(v=>v.raw.includes('Конфликт второй вкладки'))));
