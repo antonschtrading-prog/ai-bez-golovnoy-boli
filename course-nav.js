@@ -4,6 +4,7 @@ const pages=[
  ['index.html','Основной курс'],['my-route.html','Учебный маршрут'],['adaptive-route.html','Что повторить'],
  ['study-lab.html','Термины и задания'],['deep-practice.html','Большой практикум'],
  ['assessment.html','Оценка A1–C1'],['review.html','Работа над ошибками'],
+ ['account.html','Аккаунт и синхронизация'],
  ['any-ai.html','Любой ИИ'],['compare-ai.html','Сравнить ИИ'],['data-center.html','Центр данных']
 ];
 const style=document.createElement('style');

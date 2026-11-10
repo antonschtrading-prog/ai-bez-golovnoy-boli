@@ -9,6 +9,29 @@ const http=require('node:http'),fs=require('node:fs'),path=require('node:path'),
  const context=await browser.newContext({viewport:{width:390,height:844},acceptDownloads:true});
  const page=await context.newPage();page.on('pageerror',e=>errors.push(e.message));
  for(const name of fs.readdirSync(root).filter(n=>n.endsWith('.html'))){await page.goto(base+'/'+name);await page.waitForLoadState('load');assert(await page.locator('body').innerText(),name);}
+ await page.goto(base+'/account.html');
+ await page.evaluate(()=>localStorage.setItem('ai-no-headache-v1',JSON.stringify({deepNotes:{work:'local version'}})));
+ await page.reload();
+ assert.match(await page.locator('#localCount').innerText(),/1/);
+ const conflictFile=JSON.stringify({revision:2,sections:{'ai-no-headache-v1':{deepNotes:{work:'remote version'}}}});
+ await page.locator('#cloudFile').setInputFiles({name:'remote.json',mimeType:'application/json',buffer:Buffer.from(conflictFile)});
+ await page.locator('#inspect').click();
+ assert.equal(await page.locator('#conflictMetric').innerText(),'1');
+ assert(await page.locator('#conflictArea').isVisible());
+ assert(!(await page.locator('#safeArea').isVisible()));
+ assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('ai-no-headache-v1')).deepNotes.work),'local version');
+ await page.locator('#clear').click();
+ assert(!(await page.locator('#comparison').isVisible()));
+ const safeFile=JSON.stringify({revision:2,sections:{'ai-no-headache-v1':{deepNotes:{cloud:'remote item'}}}});
+ await page.locator('#cloudFile').setInputFiles({name:'safe.json',mimeType:'application/json',buffer:Buffer.from(safeFile)});
+ await page.locator('#inspect').click();
+ assert(await page.locator('#safeArea').isVisible());
+ const exportEvent=page.waitForEvent('download');await page.locator('#export').click();
+ const safeDownload=await exportEvent;
+ const safePlan=JSON.parse(fs.readFileSync(await safeDownload.path(),'utf8'));
+ assert.equal(safePlan.sections['ai-no-headache-v1'].deepNotes.work,'local version');
+ assert.equal(safePlan.sections['ai-no-headache-v1'].deepNotes.cloud,'remote item');
+ assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('ai-no-headache-v1')).deepNotes.work),'local version');
  await page.addScriptTag({url:base+'/progress-sync-model.js'});
  await page.addScriptTag({url:base+'/progress-indexeddb.js'});
  const indexedResult=await page.evaluate(async()=>{
