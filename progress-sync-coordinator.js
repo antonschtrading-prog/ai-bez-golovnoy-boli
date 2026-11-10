@@ -37,6 +37,7 @@ function create({client,storage,forgetCredentials,randomUUID=()=>root.crypto.ran
   const session=requireActive();
   if(session.outbox.read().pending)throw Error('Pending copy must be resolved first');
   const plan=await preview(localSections);
+  if(session!==active)throw Error('Session changed before queueing');
   if(plan.status!=='ready')return{status:'conflicts',conflicts:plan.conflicts};
   const saved=root.CourseSyncPlanner.queueIfSafe(session.outbox,plan);
   return {status:'queued',operationId:saved.pending.id,baseRevision:saved.pending.baseRevision};
