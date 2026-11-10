@@ -207,6 +207,23 @@ const http=require('node:http'),fs=require('node:fs'),path=require('node:path'),
  assert.equal(safePlan.sections['ai-no-headache-v1'].deepNotes.work,'local version');
  assert.equal(safePlan.sections['ai-no-headache-v1'].deepNotes.cloud,'remote item');
  assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('ai-no-headache-v1')).deepNotes.work),'local version');
+ // A second tab may update the course after comparison and before export.
+ // The stale preview must be rejected instead of silently omitting new work.
+ await page.evaluate(()=>{
+  const data=JSON.parse(localStorage.getItem('ai-no-headache-v1'));
+  data.deepNotes.savedLater='новая работа во второй вкладке';
+  localStorage.setItem('ai-no-headache-v1',JSON.stringify(data));
+ });
+ await page.locator('#export').click();
+ assert.match(await page.locator('#previewStatus').innerText(),/прогресс изменился после сравнения/);
+ assert.equal(await page.locator('#comparison').isVisible(),false,'Stale preview must close');
+ assert.equal(await page.locator('#safeArea').isVisible(),false,'Stale export action must be blocked');
+ await page.locator('#inspect').click();
+ assert.equal(await page.locator('#safeArea').isVisible(),true);
+ const refreshedDownloadEvent=page.waitForEvent('download');await page.locator('#export').click();
+ const refreshedPlan=JSON.parse(fs.readFileSync(await (await refreshedDownloadEvent).path(),'utf8'));
+ assert.equal(refreshedPlan.sections['ai-no-headache-v1'].deepNotes.savedLater,'новая работа во второй вкладке');
+ assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('ai-no-headache-v1')).deepNotes.savedLater),'новая работа во второй вкладке');
  await page.addScriptTag({url:base+'/progress-sync-model.js'});
  await page.addScriptTag({url:base+'/progress-indexeddb.js'});
  const indexedResult=await page.evaluate(async()=>{
