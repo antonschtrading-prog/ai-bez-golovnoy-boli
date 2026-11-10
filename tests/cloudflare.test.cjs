@@ -2,7 +2,8 @@ const {test}=require('node:test'),assert=require('node:assert/strict');
 const {DatabaseSync}=require('node:sqlite'),{readFileSync}=require('node:fs');
 const path=require('node:path');
 require('../progress-sync-model.js');
-const schema=readFileSync(path.join(__dirname,'../cloudflare/migrations/0001_schema.sql'),'utf8');
+const migrations=['0001_schema.sql','0002_oidc_challenges.sql'];
+const schema=migrations.map(name=>readFileSync(path.join(__dirname,'../cloudflare/migrations',name),'utf8')).join('\n');
 function mockD1(){
  const sqlite=new DatabaseSync(':memory:');sqlite.exec(schema);
  const prepare=(sql,args=[])=>({
@@ -24,6 +25,39 @@ function mockD1(){
   close:()=>sqlite.close()
  };
 }
+test('D1 OIDC schema creates expiring, single-use login challenges',async t=>{
+ const db=mockD1();t.after(db.close);
+ const {createD1Store}=await import('../cloudflare/d1-store.mjs');
+ const store=createD1Store(db);
+ const created=await store.createOidcChallenge();
+ assert.match(created.nonce,/^[A-Za-z0-9_-]{32,128}$/);
+ assert(created.expires>Date.now());
+ assert.equal(await store.challengeIsValid(created.nonce),true);
+ assert.equal(await store.challengeIsValid('not-a-valid-nonce'),false);
+ await store.consumeOidcChallenge(created.nonce);
+ assert.equal(await store.challengeIsValid(created.nonce),false);
+ await assert.rejects(store.consumeOidcChallenge(created.nonce),/used_or_expired_challenge/);
+ const expired=await store.createOidcChallenge();
+ await db.prepare('UPDATE oidc_challenges SET expires=0 WHERE nonce=?').bind(expired.nonce).run();
+ assert.equal(await store.challengeIsValid(expired.nonce),false);
+ await assert.rejects(store.consumeOidcChallenge(expired.nonce),/used_or_expired_challenge/);
+});
+test('Browser login requires a configured client and a permitted browser origin',async t=>{
+ const db=mockD1();t.after(db.close);
+ const {createHandler}=await import('../cloudflare/api.mjs');
+ const noClient=createHandler({db,origins:['https://course.example']});
+ const request=(origin)=>new Request('https://api.example/v1/auth/browser/challenge',{method:'POST',headers:origin?{Origin:origin}:{}});
+ assert.equal((await noClient(request('https://course.example'))).status,503);
+ const handler=createHandler({db,origins:['https://course.example'],oidcClientId:'123456'});
+ assert.equal((await handler(request('https://other.example'))).status,403);
+ assert.equal((await handler(request(null))).status,403);
+ const issued=await handler(request('https://course.example'));
+ assert.equal(issued.status,200);
+ const data=await issued.json();
+ assert.match(data.nonce,/^[A-Za-z0-9_-]{32,128}$/);
+ const stored=await db.prepare('SELECT nonce FROM oidc_challenges WHERE nonce=?').bind(data.nonce).first();
+ assert.equal(stored.nonce,data.nonce);
+});
 const section='ai-no-headache-v1';
 async function setup(){
  const db=mockD1();
