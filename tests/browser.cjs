@@ -9,6 +9,29 @@ const http=require('node:http'),fs=require('node:fs'),path=require('node:path'),
  const context=await browser.newContext({viewport:{width:390,height:844},acceptDownloads:true});
  const page=await context.newPage();page.on('pageerror',e=>errors.push(e.message));
  for(const name of fs.readdirSync(root).filter(n=>n.endsWith('.html'))){await page.goto(base+'/'+name);await page.waitForLoadState('load');assert(await page.locator('body').innerText(),name);}
+ // Adaptive recommendations must not forget an assessment just because work is blank.
+ await page.goto(base+'/adaptive-route.html');
+ await page.evaluate(()=>{
+  localStorage.clear();
+  localStorage.setItem('ai-course-assessment-v1',JSON.stringify({selected:'A1',results:{A1:{answers:{0:1},work:'',rubric:[],errors:[]}}}));
+  localStorage.setItem('ai-course-deep-workshop-v1',JSON.stringify({progress:{0:{work:'Краткий черновик'}},selected:0}));
+ });
+ await page.reload();
+ let recommendations=await page.locator('#recommendations').innerText();
+ assert.match(recommendations,/Заверши контрольную работу A1/,'Partial A1 assessment must be recommended');
+ assert.match(recommendations,/Продолжи начатую практику/,'Short deep practice draft must be recommended');
+ assert.match(recommendations,/не означает автоматического зачёта/,'Long text must not imply a passed exercise');
+ await page.evaluate(()=>{
+  const a=JSON.parse(localStorage.getItem('ai-course-assessment-v1'));
+  a.results.A1.errors=[0];localStorage.setItem('ai-course-assessment-v1',JSON.stringify(a));
+ });
+ await page.reload();
+ recommendations=await page.locator('#recommendations').innerText();
+ assert.match(recommendations,/Повтори контрольную работу A1/);
+ assert.match(await page.locator('#headline').innerText(),/Повтори контрольную работу A1/);
+ await page.evaluate(()=>localStorage.clear());
+ await page.reload();
+ assert.match(await page.locator('#recommendations').innerText(),/Проверь текущий уровень/);
  // Multi-section mobile navigation: selecting a topic must display its content.
  for(const scenario of [
   {file:'deep-practice.html',button:'#nav [data-go="1"]'},
