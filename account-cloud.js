@@ -13,6 +13,7 @@
     headers:{...options.headers,...(token?{Authorization:'Bearer '+token}:{})}});
    let body;
    try{body=await response.json()}catch(_){throw Error('Invalid server response')}
+   if(response.status===409)return {conflict:true,...body};
    if(!response.ok)throw Error(typeof body.error==='string'?body.error:'Server error');
    return body;
   }
@@ -31,12 +32,20 @@
    if(!root.CourseAccountPreview||typeof root.CourseAccountPreview.remote!=='function')throw Error('Progress validator unavailable');
    return root.CourseAccountPreview.remote(result);
   }
+  async function save(sections,revision,operationId){
+   if(!token)throw Error('Sign in first');
+   if(!Number.isSafeInteger(revision)||revision<0||!(/^[A-Za-z0-9_-]{8,128}$/).test(operationId))throw Error('Invalid revision or operation ID');
+   const payload=root.CourseSyncModel.makeEnvelope(sections,{deviceId:'account-cloud-save'}).sections;
+   return request('/v1/progress',{method:'PUT',headers:{
+    'Content-Type':'application/json','If-Match':'"'+revision+'"','Idempotency-Key':operationId
+   },body:JSON.stringify({sections:payload})});
+  }
   async function logout(){
    if(!token)return;
    try{await request('/v1/session',{method:'DELETE'});}finally{token=null;accountId=null;}
   }
   function clear(){token=null;accountId=null}
-  return Object.freeze({login,read,logout,clear,isSignedIn:()=>!!token,account:()=>accountId});
+  return Object.freeze({login,read,save,logout,clear,isSignedIn:()=>!!token,account:()=>accountId});
  }
  root.CourseCloudAccount=Object.freeze({create});
 })(typeof window!=='undefined'?window:globalThis);
