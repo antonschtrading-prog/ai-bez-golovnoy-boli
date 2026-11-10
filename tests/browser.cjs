@@ -85,7 +85,7 @@ const http=require('node:http'),fs=require('node:fs'),path=require('node:path'),
  const catalogTop=await page.evaluate(()=>document.querySelector('#main').getBoundingClientRect().top);
  assert(catalogTop>=-3&&catalogTop<180,'Catalog must be visible: '+catalogTop);
  await page.goto(base+'/account.html');
- await page.evaluate(()=>localStorage.setItem('ai-no-headache-v1',JSON.stringify({deepNotes:{work:'local version'}})));
+ await page.evaluate(()=>{localStorage.clear();localStorage.setItem('ai-no-headache-v1',JSON.stringify({deepNotes:{work:'local version'}}))});
  await page.reload();
  assert.match(await page.locator('#localCount').innerText(),/1/);
  const conflictFile=JSON.stringify({revision:2,sections:{'ai-no-headache-v1':{deepNotes:{work:'remote version'}}}});
