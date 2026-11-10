@@ -124,3 +124,25 @@ test('account switch or sign-out during remote read cannot queue stale progress'
  await assert.rejects(pending,/Session changed/);
  assert.equal(memory.getItem('ai-course-outbox-v1:account-A'),null);
 });
+
+test('offline retry reaches real API exactly once and preserves the operation id',async t=>{
+ const {baseURL,store}=await fixture(t);
+ let token=tokenA,offline=true,sends=0;
+ const client=CourseProgressClient.create({baseURL,getToken:()=>token,fetchImpl:async(url,options)=>{
+  if(options.method==='PUT'){sends++;if(offline)throw Error('network temporarily offline')}
+  return fetch(url,options);
+ }});
+ const device=CourseSyncCoordinator.create({client,storage:new Memory(),forgetCredentials:()=>{token=null},randomUUID:()=>'stable-retry-0001'});
+ await device.connect();
+ await device.queue({[K]:{completed:['unit-1']}},{confirmed:true});
+ const id=device.pending().pending.id;
+ assert.equal((await device.send()).status,'retry');
+ assert.equal(device.pending().pending.id,id);
+ assert.equal(store.get('shared_account').revision,0);
+ offline=false;
+ assert.equal((await device.send()).status,'synced');
+ assert.equal(store.get('shared_account').revision,1);
+ assert.equal(sends,2);
+ assert.equal((await device.send()).status,'idle');
+ assert.equal(store.get('shared_account').revision,1);
+});
