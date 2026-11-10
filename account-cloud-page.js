@@ -3,11 +3,16 @@
  const $=id=>root.document.getElementById(id);
  const status=(message,error=false)=>{$('cloudStatus').textContent=message;$('cloudStatus').className='status'+(error?' danger':'')};
  const baseURL=root.CourseCloudConfig&&root.CourseCloudConfig.apiBaseURL;
- let client=null,busy=false,enabled=false,writer=null,proposalId=null;
+ let client=null,busy=false,enabled=false,writer=null,proposalId=null,browserNonce=null,browserExpires=0;
+ const browserClientId=root.CourseCloudConfig&&root.CourseCloudConfig.telegramClientId;
  const writeStatus=(message,error=false)=>{$('cloudWriteStatus').textContent=message;$('cloudWriteStatus').className='status'+(error?' danger':'')};
+ function clearBrowserAttempt(){browserNonce=null;browserExpires=0}
  function discardProposal(){if(writer)writer.cancel();proposalId=null;$('cloudApproval').hidden=true;$('cloudConfirmed').checked=false;$('cloudCommit').disabled=true;}
  function controls(){
   $('cloudLogin').disabled=busy||!enabled||(client&&client.isSignedIn());
+  $('browserPrepare').disabled=busy||!enabled||!Number.isSafeInteger(browserClientId)||browserClientId<=0||(client&&client.isSignedIn());
+  $('browserAuthorize').disabled=busy||!browserNonce||Date.now()>=browserExpires||(client&&client.isSignedIn());
+  $('browserAuthorize').hidden=!browserNonce;
   $('cloudRead').disabled=busy||!client||!client.isSignedIn();
   $('cloudLogout').disabled=busy||!client||!client.isSignedIn();
   $('cloudPrepare').disabled=busy||!client||!client.isSignedIn();
@@ -46,7 +51,7 @@
   $('cloudLogin').addEventListener('click',()=>run(async()=>{
    await loadTelegramSdk();
    client=root.CourseCloudAccount.create({baseURL,fetchImpl:root.fetch.bind(root),initData:telegramData()});
-   discardProposal();
+   discardProposal();clearBrowserAttempt();
    await client.login();
    writer=root.CourseSyncCommit.create({storage:root.localStorage,client,uuid:()=>root.crypto.randomUUID()});
    status('Вход выполнен. Нажми «Получить облачную копию» для чтения данных.');
@@ -58,9 +63,52 @@
    status('Облачная копия проверена. Для сравнения нажми «Сравнить две копии» ниже.');
   }));
   $('cloudLogout').addEventListener('click',()=>run(async()=>{
-   discardProposal();
+   discardProposal();clearBrowserAttempt();
    try{await client.logout();status('Выход выполнен. Локальный прогресс не изменён.')}
    finally{root.CourseAccountPreviewPage.reset()}
+  }));
+  async function loadBrowserLoginSdk(){
+   if(root.Telegram&&root.Telegram.Login&&typeof root.Telegram.Login.auth==='function')return;
+   await new Promise((resolve,reject)=>{
+    const script=root.document.createElement('script');
+    script.src='https://telegram.org/js/telegram-login.js';
+    script.onload=resolve;script.onerror=()=>reject(Error('Telegram Login SDK недоступен'));
+    root.document.head.append(script);
+   });
+   if(!root.Telegram||!root.Telegram.Login||typeof root.Telegram.Login.auth!=='function')throw Error('Telegram Login SDK не инициализирован');
+  }
+  $('browserPrepare').addEventListener('click',()=>run(async()=>{
+   discardProposal();clearBrowserAttempt();
+   if(!Number.isSafeInteger(browserClientId)||browserClientId<=0)throw Error('Telegram client ID не настроен');
+   await loadBrowserLoginSdk();
+   client=root.CourseCloudAccount.create({baseURL,fetchImpl:root.fetch.bind(root),initData:''});
+   const challenge=await client.browserChallenge();
+   browserNonce=challenge.nonce;browserExpires=challenge.expires;
+   status('Запрос подготовлен. Нажми «Подтвердить вход через Telegram» до истечения срока.');
+  }));
+  $('browserAuthorize').addEventListener('click',()=>run(async()=>{
+   if(!browserNonce||browserExpires<=Date.now())throw Error('Срок входа истёк. Подготовь новый запрос');
+   const nonce=browserNonce;
+   clearBrowserAttempt();
+   // The popup is opened immediately inside the user click, not after a network await.
+   const idToken=await new Promise((resolve,reject)=>{
+    let settled=false;
+    const timeout=root.setTimeout(()=>finish(Error('Telegram не ответил. Подготовь вход заново.')),120000);
+    function finish(error,value){
+     if(settled)return;
+     settled=true;root.clearTimeout(timeout);
+     if(error)reject(error);else resolve(value);
+    }
+    try{
+     root.Telegram.Login.auth({client_id:browserClientId,scope:['profile'],nonce},data=>{
+      if(!data||typeof data.id_token!=='string')return finish(Error(data&&data.error||'Вход отменён'));
+      finish(null,data.id_token);
+     });
+    }catch(e){finish(e)}
+   });
+   await client.browserComplete(idToken,nonce);
+   writer=root.CourseSyncCommit.create({storage:root.localStorage,client,uuid:()=>root.crypto.randomUUID()});
+   status('Вход через браузер выполнен. Теперь можно прочитать облачную копию.');
   }));
   $('cloudConfirmed').addEventListener('change',controls);
   $('cloudCancel').addEventListener('click',()=>{discardProposal();writeStatus('Подготовка отправки отменена. Данные не отправлены.');controls()});
@@ -92,7 +140,7 @@
    root.CourseAccountPreviewPage.reset();
    writeStatus('Облачная копия сохранена, ревизия '+result.revision+'. Локальный прогресс не изменён.');
   }));
-  root.addEventListener('pagehide',()=>{discardProposal();if(client)client.clear()},{once:true});
+  root.addEventListener('pagehide',()=>{discardProposal();clearBrowserAttempt();if(client)client.clear()},{once:true});
   controls();
  }catch(error){status('Облачный вход недоступен: '+error.message,true);controls()}
 })(typeof window!=='undefined'?window:globalThis);
