@@ -56,7 +56,18 @@ function inspect(){
 }
 function download(){
  try{
-  const text=root.CourseAccountPreview.exportPlan(result);
+  if(!candidate||!result)throw Error('Сначала сравни копии');
+  // Another tab may modify localStorage after inspection.
+  // Never export an obsolete proposal that could omit the newly saved work.
+  const fresh=root.CourseAccountPreview.plan(root.localStorage,candidate);
+  if(JSON.stringify(fresh)!==JSON.stringify(result)){
+   result=null;
+   $('comparison').hidden=true;
+   $('safeArea').hidden=true;
+   $('conflictArea').hidden=true;
+   throw Error('Локальный прогресс изменился после сравнения. Нажми «Сравнить две копии» заново.');
+  }
+  const text=root.CourseAccountPreview.exportPlan(fresh);
   const blob=new Blob([text],{type:'application/json'});
   const url=URL.createObjectURL(blob);const anchor=root.document.createElement('a');
   anchor.href=url;anchor.download='course-sync-preview.json';anchor.click();
