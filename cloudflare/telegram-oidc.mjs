@@ -22,7 +22,9 @@ export async function verifyTelegramOidc(idToken,{clientId,nonce,fetchImpl=fetch
  if(header?.alg!=='RS256'||typeof header.kid!=='string'||header.kid.length>160||! /^[A-Za-z0-9_-]+$/.test(header.kid)||header.typ&&header.typ!=='JWT')throw Error('invalid_jwt_header');
  if(claims?.iss!==ISSUER||claims.aud!==clientId||claims.nonce!==nonce)throw Error('invalid_claims');
  if(typeof claims.sub!=='string'||! /^[1-9][0-9]{0,19}$/.test(claims.sub))throw Error('invalid_subject');
- if(claims.id!==undefined&&String(claims.id)!==claims.sub)throw Error('mismatched_subject');
+ // OIDC sub can be pairwise and differ from Telegram's public numeric user id.
+ // The profile scope must supply id to link to Mini App's signed user.id.
+ if(!Number.isSafeInteger(claims.id)||claims.id<=0)throw Error('missing_telegram_user_id');
  const nowSeconds=Math.floor(now/1000);
  if(!Number.isSafeInteger(claims.iat)||!Number.isSafeInteger(claims.exp)||claims.iat>nowSeconds+30||claims.exp<=nowSeconds||claims.exp-claims.iat>3600||nowSeconds-claims.iat>300)throw Error('expired_identity');
  let keysResponse;
@@ -39,5 +41,5 @@ export async function verifyTelegramOidc(idToken,{clientId,nonce,fetchImpl=fetch
   valid=await crypto.subtle.verify('RSASSA-PKCS1-v1_5',key,decode(parts[2]),enc.encode(parts[0]+'.'+parts[1]));
  }catch(_){throw Error('invalid_signature')}
  if(!valid)throw Error('invalid_signature');
- return{telegramId:claims.sub};
+ return{telegramId:String(claims.id)};
 }
