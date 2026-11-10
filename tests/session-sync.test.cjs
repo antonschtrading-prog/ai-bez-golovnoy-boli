@@ -1,0 +1,100 @@
+const {test}=require('node:test'), assert=require('node:assert/strict'), http=require('node:http');
+const {Store}=require('../server/store.cjs');
+const {handler}=require('../server/api.cjs');
+require('../progress-sync-model.js');
+require('../progress-merge-rules.js');
+require('../progress-outbox.js');
+require('../progress-sync-planner.js');
+require('../progress-client.js');
+require('../progress-sync-coordinator.js');
+const tokenA='a'.repeat(40), tokenB='b'.repeat(40), tokenOther='c'.repeat(40);
+const K='ai-no-headache-v1';
+class Memory{
+ constructor(){this.map=new Map}
+ getItem(key){return this.map.has(key)?this.map.get(key):null}
+ setItem(key,value){this.map.set(key,value)}
+}
+async function fixture(t){
+ const store=new Store();
+ const expiry=Date.now()+300000;
+ store.provision('shared_account',tokenA,expiry);
+ store.provision('shared_account',tokenB,expiry);
+ store.provision('separate_account',tokenOther,expiry);
+ const server=http.createServer(handler({store,origins:['http://127.0.0.1:8080']}));
+ await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
+ t.after(async()=>{await new Promise(resolve=>server.close(resolve));store.close()});
+ return {baseURL:'http://127.0.0.1:'+server.address().port,store};
+}
+function device(baseURL,initialToken,store){
+ let token=initialToken,forgotten=0;
+ const client=CourseProgressClient.create({baseURL,getToken:()=>token,fetchImpl:fetch});
+ const coord=CourseSyncCoordinator.create({
+  client,storage:store,forgetCredentials:()=>{token=null;forgotten++},
+  randomUUID:()=>'sync-'+Math.random().toString(36).slice(2).padEnd(14,'0')
+ });
+ return {coord,client,get token(){return token},get forgotten(){return forgotten}};
+}
+test('two devices sync through the real HTTP API without losing independent drafts',async t=>{
+ const {baseURL}=await fixture(t);
+ const phone=device(baseURL,tokenA,new Memory());
+ const mac=device(baseURL,tokenB,new Memory());
+ const other=device(baseURL,tokenOther,new Memory());
+ const [p,m,o]=await Promise.all([phone.coord.connect(),mac.coord.connect(),other.coord.connect()]);
+ assert.equal(p.accountId,'shared_account');
+ assert.equal(m.accountId,p.accountId);
+ assert.equal(o.accountId,'separate_account');
+ assert.equal((await phone.coord.queue({[K]:{deepNotes:{phone:'first'}}})).status,'queued');
+ assert.equal((await phone.coord.send()).status,'synced');
+ assert.equal((await mac.coord.queue({[K]:{deepNotes:{mac:'second'}}})).status,'queued');
+ assert.equal((await mac.coord.send()).status,'synced');
+ const result=await phone.client.read();
+ assert.equal(result.revision,2);
+ assert.deepEqual(result.sections[K].deepNotes,{phone:'first',mac:'second'});
+ assert.deepEqual((await other.client.read()).sections,{});
+});
+test('an offline device retains pending changes until the user resolves server conflict',async t=>{
+ const {baseURL}=await fixture(t);
+ const phone=device(baseURL,tokenA,new Memory()),mac=device(baseURL,tokenB,new Memory());
+ await phone.coord.connect();await mac.coord.connect();
+ await phone.coord.queue({[K]:{deepNotes:{phone:'offline'}}});
+ await mac.coord.queue({[K]:{deepNotes:{mac:'online'}}});
+ assert.equal((await mac.coord.send()).status,'synced');
+ assert.equal((await phone.coord.send()).status,'conflict');
+ assert.equal(phone.coord.pending().pending.sections[K].deepNotes.phone,'offline');
+ assert.equal((await phone.coord.send()).status,'conflict');
+ assert.equal((await phone.client.read()).sections[K].deepNotes.mac,'online');
+});
+test('server-verified logout revokes token and leaves pending drafts recoverable',async t=>{
+ const {baseURL}=await fixture(t);
+ const memory=new Memory(),phone=device(baseURL,tokenA,memory);
+ await phone.coord.connect();
+ await phone.coord.queue({[K]:{deepNotes:{a:'keep'}}});
+ const before=phone.coord.pending().pending.id;
+ const signedOut=await phone.coord.signOut();
+ assert.equal(signedOut.signedOut,true);
+ assert.equal(signedOut.serverRevoked,true);
+ assert.equal(phone.token,null);
+ assert.equal(phone.coord.state().connected,false);
+ await assert.rejects(()=>phone.coord.send(),/Connect to account/);
+ const again=device(baseURL,tokenB,memory);
+ await again.coord.connect();
+ assert.equal(again.coord.pending().pending.id,before);
+ await assert.rejects(()=>phone.client.read(),/Account required/);
+});
+test('unverified account identity is never allowed to choose a local outbox',async()=>{
+ let stored=0;
+ const client={session:async()=>({accountId:'fake',authenticated:false}),read:async()=>({}),save:async()=>({}),logout:async()=>({})};
+ const coord=CourseSyncCoordinator.create({client,storage:{getItem:()=>null,setItem:()=>stored++},forgetCredentials:()=>{}});
+ await assert.rejects(()=>coord.connect(),/Server identity/);
+ assert.equal(stored,0);
+});
+test('sign out clears credentials even when server is offline, with honest status',async()=>{
+ let cleared=false;
+ const client={session:async()=>({accountId:'safe',authenticated:true}),read:async()=>({}),save:async()=>({}),logout:async()=>{throw Error('offline')}};
+ const coord=CourseSyncCoordinator.create({client,storage:new Memory(),forgetCredentials:()=>{cleared=true}});
+ await coord.connect();
+ const result=await coord.signOut();
+ assert.equal(result.signedOut,true);assert.equal(result.serverRevoked,false);
+ assert.equal(result.serverError,'server_revocation_unconfirmed');
+ assert.equal(cleared,true);
+});
