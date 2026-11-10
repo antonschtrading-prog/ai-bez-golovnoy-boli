@@ -1,0 +1,15 @@
+# Copy to wrangler.toml only after creating a Cloudflare Workers Free account.
+# This template is NOT deployable until a D1 ID is supplied by Cloudflare.
+name = "ai-course-progress"
+main = "cloudflare/worker.mjs"
+compatibility_date = "2026-11-01"
+workers_dev = true
+
+[vars]
+COURSE_ORIGINS = "https://antonschtrading-prog.github.io"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "ai-course-progress"
+database_id = "REPLACE_WITH_REAL_D1_DATABASE_ID"
+migrations_dir = "cloudflare/migrations"
