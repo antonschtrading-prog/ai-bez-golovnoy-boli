@@ -177,3 +177,55 @@ test('Telegram login unavailable without configured token',async t=>{
  }));
  assert.equal(r.status,503);
 });
+
+test('Cloudflare browser OIDC and Mini App share one verified account, reject replay, and isolate users',async t=>{
+ const db=mockD1();t.after(db.close);
+ const {createHandler}=await import('../cloudflare/api.mjs');
+ const {subtle}=require('node:crypto').webcrypto;
+ const keypair=await subtle.generateKey({name:'RSASSA-PKCS1-v1_5',modulusLength:2048,publicExponent:new Uint8Array([1,0,1]),hash:'SHA-256'},true,['sign','verify']);
+ const jwk=await subtle.exportKey('jwk',keypair.publicKey);
+ const keyId='test-key-2026';
+ const handler=createHandler({db,origins:['https://course.example'],botToken:'test-bot-secret',oidcClientId:'123456',
+  jwksFetch:async()=>new Response(JSON.stringify({keys:[{...jwk,kid:keyId,alg:'RS256',use:'sig'}]}),{status:200,headers:{'Content-Type':'application/json'}})
+ });
+ const makeRequest=async(path,body,origin='https://course.example')=>{
+  const resp=await handler(new Request('https://api.example'+path,{method:'POST',headers:{Origin:origin,'Content-Type':'application/json'},body:JSON.stringify(body)}));
+  return {status:resp.status,body:await resp.json()};
+ };
+ const mini=await makeRequest('/v1/auth/telegram',{initData:signedTelegram({nonce:'cross-device'})});
+ assert.equal(mini.status,200);
+ const challenge=await makeRequest('/v1/auth/browser/challenge',{});
+ assert.equal(challenge.status,200);
+ const now=Math.floor(Date.now()/1000);
+ const b64=x=>Buffer.from(typeof x==='string'?x:JSON.stringify(x)).toString('base64url');
+ const jwt=async claims=>{
+  const unsigned=b64({alg:'RS256',kid:keyId,typ:'JWT'})+'.'+b64(claims);
+  const signature=await subtle.sign('RSASSA-PKCS1-v1_5',keypair.privateKey,Buffer.from(unsigned));
+  return unsigned+'.'+Buffer.from(signature).toString('base64url');
+ };
+ const claims={iss:'https://oauth.telegram.org',aud:'123456',sub:'345',id:345,nonce:challenge.body.nonce,iat:now,exp:now+120};
+ const fake=await makeRequest('/v1/auth/browser',{idToken:await jwt({...claims,id:789}),nonce:challenge.body.nonce});
+ assert.equal(fake.status,200,'A valid signed different Telegram ID has its own account');
+ assert.notEqual(fake.body.accountId,mini.body.accountId);
+ const used=await makeRequest('/v1/auth/browser',{idToken:await jwt(claims),nonce:challenge.body.nonce});
+ assert.equal(used.status,401,'Used OIDC challenge must never authenticate another user');
+ const next=await makeRequest('/v1/auth/browser/challenge',{});
+ const wrongIssuer=await makeRequest('/v1/auth/browser',{idToken:await jwt({...claims,nonce:next.body.nonce,iss:'https://evil.example'}),nonce:next.body.nonce});
+ assert.equal(wrongIssuer.status,401,'Invalid signed issuer must not consume the nonce');
+ const browser=await makeRequest('/v1/auth/browser',{idToken:await jwt({...claims,nonce:next.body.nonce}),nonce:next.body.nonce});
+ assert.equal(browser.status,200);
+ assert.equal(browser.body.accountId,mini.body.accountId);
+ assert.notEqual(browser.body.token,mini.body.token);
+ const session=await handler(new Request('https://api.example/v1/session',{headers:{Authorization:'Bearer '+browser.body.token}}));
+ assert.equal((await session.json()).accountId,mini.body.accountId);
+ const save=await handler(new Request('https://api.example/v1/progress',{method:'PUT',headers:{
+  Authorization:'Bearer '+mini.body.token,'Content-Type':'application/json','If-Match':'"0"','Idempotency-Key':'cross-device-01'
+ },body:JSON.stringify({sections:{[section]:{deepNotes:{fromMini:'hello'}}}})}));
+ assert.equal(save.status,200);
+ const read=await handler(new Request('https://api.example/v1/progress',{headers:{Authorization:'Bearer '+browser.body.token}}));
+ assert.equal((await read.json()).sections[section].deepNotes.fromMini,'hello');
+ const foreign=await handler(new Request('https://api.example/v1/progress',{headers:{Authorization:'Bearer '+fake.body.token}}));
+ assert.deepEqual((await foreign.json()).sections,{});
+ const again=await makeRequest('/v1/auth/browser',{idToken:await jwt({...claims,nonce:next.body.nonce}),nonce:next.body.nonce});
+ assert.equal(again.status,401);
+});
