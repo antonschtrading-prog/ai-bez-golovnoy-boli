@@ -72,7 +72,7 @@ export function createD1Store(db){
    if(result.meta.changes!==1)throw Error('used_or_expired_challenge');
   },
   async oidcAccountForVerifiedTelegram(telegramId){
-   if(typeof telegramId!=='string'||! /^[1-9][0-9]{0,15}$/.test(telegramId))throw Error('invalid_telegram_subject');
+   if(typeof telegramId!=='string'||! /^[1-9][0-9]{0,19}$/.test(telegramId))throw Error('invalid_telegram_subject');
    const generated='tg_'+crypto.randomUUID().replace(/-/g,'');
    await stmt(db,'INSERT INTO telegram(user,account) VALUES(?,?) ON CONFLICT(user) DO NOTHING',telegramId,generated).run();
    const row=await stmt(db,'SELECT account FROM telegram WHERE user=?',telegramId).first();
