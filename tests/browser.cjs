@@ -9,6 +9,39 @@ const http=require('node:http'),fs=require('node:fs'),path=require('node:path'),
  const context=await browser.newContext({viewport:{width:390,height:844},acceptDownloads:true});
  const page=await context.newPage();page.on('pageerror',e=>errors.push(e.message));
  for(const name of fs.readdirSync(root).filter(n=>n.endsWith('.html'))){await page.goto(base+'/'+name);await page.waitForLoadState('load');assert(await page.locator('body').innerText(),name);}
+ // Spaced repetition: an early review may show the definition but cannot give credit.
+ await page.goto(base+'/study-lab.html');
+ await page.evaluate(()=>localStorage.clear());
+ await page.reload();
+ await page.locator('#reveal').click();
+ await page.locator('#known').click();
+ const firstTerm=await page.evaluate(()=>JSON.parse(localStorage.getItem('ai-course-study-lab-v1')).terms[0]);
+ assert.equal(firstTerm.level,1);
+ assert.equal(firstTerm.count,1);
+ assert(firstTerm.next>Date.now(),'First successful term should be scheduled in the future');
+ await page.evaluate(()=>{
+  const value=JSON.parse(localStorage.getItem('ai-course-study-lab-v1'));
+  for(let i=1;i<300;i++)value.terms[i]={level:1,count:1,next:Date.now()+14*86400000};
+  localStorage.setItem('ai-course-study-lab-v1',JSON.stringify(value));
+ });
+ await page.reload();
+ await page.locator('#reveal').click();
+ assert.equal(await page.locator('#known').count(),0,'Early study must not offer repeated credit');
+ assert.match(await page.locator('#app').innerText(),/досрочная отметка не повысит уровень/);
+ assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('ai-course-study-lab-v1')).terms[0].count),1);
+ await page.evaluate(()=>{
+  const value=JSON.parse(localStorage.getItem('ai-course-study-lab-v1'));
+  value.terms[0].next=Date.now()-1000;
+  localStorage.setItem('ai-course-study-lab-v1',JSON.stringify(value));
+ });
+ await page.reload();
+ await page.locator('#reveal').click();
+ assert.equal(await page.locator('#known').count(),1,'Due term can be credited');
+ await page.locator('#known').click();
+ const secondTerm=await page.evaluate(()=>JSON.parse(localStorage.getItem('ai-course-study-lab-v1')).terms[0]);
+ assert.equal(secondTerm.count,2);
+ assert.equal(secondTerm.level,2);
+ await page.evaluate(()=>localStorage.clear());
  // Adaptive recommendations must not forget an assessment just because work is blank.
  await page.goto(base+'/adaptive-route.html');
  await page.evaluate(()=>{
