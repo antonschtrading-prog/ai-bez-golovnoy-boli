@@ -10,7 +10,14 @@ const assessment=a?.results&&typeof a.results==='object'?a.results:{};
 for(const level of LEVELS){
  const p=assessment[level];if(!p)continue;
  if(Array.isArray(p.errors)&&p.errors.length)add(out,'Ошибка в проверяемых вопросах','Повтори контрольную работу '+level,'Незакрытых ошибок: '+p.errors.length+'. Разбери причины и проверь решение заново.','./assessment.html',100,level);
- else if(p.work&&p.work.trim()&&p.work.trim().length<120)add(out,'Неоконченная работа','Дополни самостоятельный ответ '+level,'Уже есть начатое решение, но аргументация пока короткая.','./assessment.html',55,level);
+ else {
+  const answered=p.answers&&typeof p.answers==='object'&&Object.keys(p.answers).length>0;
+  const hasWork=typeof p.work==='string'&&p.work.trim().length>0;
+  const hasRubric=Array.isArray(p.rubric)&&p.rubric.length>0;
+  const hasEvidence=p.evidence&&typeof p.evidence==='object'&&Object.values(p.evidence).some(x=>typeof x==='string'&&x.trim());
+  if((answered||hasWork||hasRubric||hasEvidence)&&(!hasWork||p.work.trim().length<120))
+   add(out,'Неоконченная работа','Заверши контрольную работу '+level,'Часть задания уже выполнена, но развернутое практическое решение отсутствует или пока короче 120 символов.','./assessment.html',70,level);
+ }
 }
 const topics=r?.items&&typeof r.items==='object'?r.items:{};
 const retry=Object.keys(topics).filter(k=>topics[k]&&topics[k].next<=Date.now()&&topics[k].attempts>0);
@@ -20,7 +27,9 @@ const ready=Object.keys(terms).filter(k=>terms[k]&&terms[k].next<=Date.now());
 if(ready.length)add(out,'Повторение терминов','Повтори терминологию','По сохранённым датам к повторению готовы '+ready.length+' терминов.','./study-lab.html',75);
 const progress=deep?.progress&&typeof deep.progress==='object'?deep.progress:{};
 const workCount=Object.values(progress).filter(p=>p&&typeof p.work==='string'&&p.work.trim().length>=120).length;
-if(workCount<7)add(out,'Практическое применение','Выполни углублённую практику','Развёрнутые ответы заполнены в '+workCount+' из 7 занятий.','./deep-practice.html',45);
+const started=Object.values(progress).filter(p=>p&&typeof p.work==='string'&&p.work.trim().length>0&&p.work.trim().length<120).length;
+if(started)add(out,'Неоконченная работа','Продолжи начатую практику','Коротких черновиков для доработки: '+started+'. Вернись к ним, добавь рассуждения, доказательства и проверки.','./deep-practice.html',60);
+if(workCount<7)add(out,'Практическое применение','Выполни углублённую практику','Развёрнутые ответы заполнены в '+workCount+' из 7 занятий. Это не означает автоматического зачёта по критериям.','./deep-practice.html',45);
 if(!Object.keys(assessment).length)add(out,'Начальная диагностика','Проверь текущий уровень','Начни с A1. Сначала ответь на вопросы, затем попробуй практику.','./assessment.html',65,'A1');
 if(!out.length)add(out,'Следующий шаг','Проверь знания на новой задаче','В сохранённых данных нет срочных повторений. Можно попробовать другую ситуацию и сравнить решения.','./compare-ai.html',25);
 out.sort((x,y)=>y.weight-x.weight||LEVELS.indexOf(x.level)-LEVELS.indexOf(y.level));
