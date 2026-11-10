@@ -50,11 +50,33 @@ function write(storage,key,raw,options={}){
  // Retention only after the main write succeeds. A cleanup failure is harmless.
  try{const entries=list(storage,key);for(const v of entries.slice(0,-LIMIT))storage.removeItem(v.id)}catch(_){}
 }
+/* Best-effort undo of a multi-section import. Only revert keys whose current
+ * value is still the one written by this import: do not overwrite a concurrent tab.
+ * Synchronize baselines ONLY for verified successful reversions.
+ */
+function rollbackBatch(storage,changes){
+ if(!Array.isArray(changes))throw Error('Неверный журнал отката');
+ if(!baselines.has(storage))initialize(storage);
+ const failures=[];
+ for(const step of changes.slice().reverse()){
+  const {key,before,after}=step||{};
+  if(typeof key!=='string'||!root.CourseSyncModel.KEYS.includes(key)&&key!=='ai-course-journal-v1'||typeof after!=='string'&&after!==null||typeof before!=='string'&&before!==null){
+   failures.push(key||'unknown');continue;
+  }
+  try{
+   if(storage.getItem(key)!==after)throw Error('Изменения другой вкладки');
+   if(before===null)storage.removeItem(key);else storage.setItem(key,before);
+   if(storage.getItem(key)!==before)throw Error('Значение после отката не совпадает');
+   if(root.CourseSyncModel.KEYS.includes(key))baselines.get(storage).set(key,before);
+  }catch(_){failures.push(key)}
+ }
+ return {complete:failures.length===0,failures};
+}
 function restore(storage,id,expected){
  const version=list(storage).find(v=>v.id===id);if(!version)throw Error('Версия не найдена');
  write(storage,version.section,version.raw,{expected,reason:'restore'});
  return version.section;
 }
-root.CourseStorage=Object.freeze({PREFIX,LIMIT,initialize,list,write,restore});
+root.CourseStorage=Object.freeze({PREFIX,LIMIT,initialize,list,write,restore,rollbackBatch});
 if(root.document){try{initialize(root.localStorage)}catch(_){} }
 })(typeof window!=='undefined'?window:globalThis);
