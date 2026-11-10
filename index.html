@@ -255,5 +255,17 @@ render=function(){
 };
 window.CourseDataAPI.schemaVersion=6;
 
- document.querySelector('#continueBtn').onclick=()=>navigate(state.lastView==='sync'?'lesson':state.lastView||'lesson');document.querySelector('#catalogBtn').onclick=()=>navigate('catalog');document.querySelector('#syncBtn').onclick=()=>navigate('sync');render();
+ // The lesson panel is below the hero and navigation on narrow screens.
+ // Merely changing its HTML while scrolling to the top looks like a dead button.
+ function openCourseSection(target){
+  navigate(target);
+  const panel=document.querySelector('#main');
+  panel.setAttribute('tabindex','-1');
+  panel.focus({preventScroll:true});
+  panel.scrollIntoView({behavior:'auto',block:'start'});
+ }
+ document.querySelector('#continueBtn').onclick=()=>openCourseSection(!state.lastView||['home','catalog','sync'].includes(state.lastView)?'lesson':state.lastView);
+ document.querySelector('#catalogBtn').onclick=()=>openCourseSection('catalog');
+ document.querySelector('#syncBtn').onclick=()=>openCourseSection('sync');
+ render();
 </script><script src="./course-nav.js" defer></script></body></html>

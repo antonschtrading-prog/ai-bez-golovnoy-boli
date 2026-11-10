@@ -9,6 +9,24 @@ const http=require('node:http'),fs=require('node:fs'),path=require('node:path'),
  const context=await browser.newContext({viewport:{width:390,height:844},acceptDownloads:true});
  const page=await context.newPage();page.on('pageerror',e=>errors.push(e.message));
  for(const name of fs.readdirSync(root).filter(n=>n.endsWith('.html'))){await page.goto(base+'/'+name);await page.waitForLoadState('load');assert(await page.locator('body').innerText(),name);}
+ // Regression: hero button must visibly move to the lesson on a narrow mobile screen.
+ await page.goto(base+'/index.html');
+ // A previously saved overview must never make Continue reopen the overview.
+ await page.evaluate(()=>localStorage.setItem('ai-no-headache-v1',JSON.stringify({completed:[],answers:{},report:{task:'',result:'',verification:'',reflection:''},lastView:'home'})));
+ await page.reload();
+ await page.locator('#continueBtn').click();
+ await page.waitForTimeout(80);
+ assert.match(await page.locator('#main').innerText(),/A1 · Урок 1/);
+ const continueViewport=await page.evaluate(()=>{
+  const r=document.querySelector('#main').getBoundingClientRect();
+  return{top:r.top,bottom:r.bottom,scrollY:window.scrollY};
+ });
+ assert(continueViewport.top>=-3&&continueViewport.top<180,'Continue must scroll lesson into mobile viewport: '+JSON.stringify(continueViewport));
+ assert(continueViewport.scrollY>100,'Continue should not leave mobile page at top');
+ await page.locator('#catalogBtn').click();
+ assert.match(await page.locator('#main').innerText(),/Программа|A1/);
+ const catalogTop=await page.evaluate(()=>document.querySelector('#main').getBoundingClientRect().top);
+ assert(catalogTop>=-3&&catalogTop<180,'Catalog must be visible: '+catalogTop);
  await page.goto(base+'/account.html');
  await page.evaluate(()=>localStorage.setItem('ai-no-headache-v1',JSON.stringify({deepNotes:{work:'local version'}})));
  await page.reload();
