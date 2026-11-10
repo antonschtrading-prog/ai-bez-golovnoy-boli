@@ -17,3 +17,38 @@ test('current v5 main-course export migrates without field loss',()=>{const sour
 test('single-sided merge cannot smuggle unsafe nested keys',()=>{assert.throws(()=>CourseMergeRules.audit({},JSON.parse('{"ai-no-headache-v1":{"answers":{"constructor":{}}}}')))});
 test('primary-write failure still leaves both versions recoverable',()=>{const s=new Memory();s.setItem(key,raw('old'));const original=s.setItem.bind(s);s.setItem=(k,v)=>{if(k===key)throw Error('write interrupted');original(k,v)};assert.throws(()=>CourseStorage.write(s,key,raw('new')));assert.equal(s.getItem(key),raw('old'));assert.equal(CourseStorage.list(s,key).length,2)});
 test('malformed legacy full backup cannot migrate as empty progress',()=>{for(const items of [undefined,null,[],42,'bad'])assert.throws(()=>CourseMigrations.prepare({format:'ai-course-full-local-backup-v1',items},'test'))});
+
+test('failed multi-section import rolls back baseline and permits later editing',()=>{
+ const s=new Memory(),key2='ai-course-assessment-v1';
+ s.setItem(key,raw('old'));CourseStorage.initialize(s);
+ const first=s.getItem(key),imported=raw('imported');
+ CourseStorage.write(s,key,imported);
+ const originalSet=s.setItem.bind(s);
+ s.setItem=(k,v)=>{if(k===key2)throw Error('simulated quota');originalSet(k,v)};
+ assert.throws(()=>CourseStorage.write(s,key2,JSON.stringify({results:{}})),/simulated quota/);
+ const result=CourseStorage.rollbackBatch(s,[{key,before:first,after:imported}]);
+ assert.equal(result.complete,true);
+ assert.equal(s.getItem(key),first);
+ CourseStorage.write(s,key,raw('after failure'));
+ assert.equal(s.getItem(key),raw('after failure'));
+});
+test('partial rollback does not hide failure or overwrite another tab',()=>{
+ const s=new Memory(),key2='ai-course-assessment-v1',value=raw('mine');
+ s.setItem(key,raw('original'));CourseStorage.initialize(s);
+ CourseStorage.write(s,key,value);
+ s.setItem(key,raw('changed by second tab'));
+ const rollback=CourseStorage.rollbackBatch(s,[{key,before:raw('original'),after:value}]);
+ assert.equal(rollback.complete,false);
+ assert.deepEqual(rollback.failures,[key]);
+ assert.equal(s.getItem(key),raw('changed by second tab'));
+ assert.throws(()=>CourseStorage.write(s,key,raw('next')),/Другая вкладка/);
+});
+test('rollback reports a storage failure rather than claiming full recovery',()=>{
+ const s=new Memory(),before=raw('before'),after=raw('after');
+ s.setItem(key,before);CourseStorage.initialize(s);CourseStorage.write(s,key,after);
+ const baseSet=s.setItem.bind(s);
+ s.setItem=(k,v)=>{if(k===key&&v===before)throw Error('rollback disk failure');baseSet(k,v)};
+ const result=CourseStorage.rollbackBatch(s,[{key,before,after}]);
+ assert.equal(result.complete,false);assert.deepEqual(result.failures,[key]);
+ assert.equal(s.getItem(key),after);
+});
