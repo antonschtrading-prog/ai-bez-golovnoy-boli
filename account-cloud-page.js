@@ -2,30 +2,44 @@
 (function(root){'use strict';
  const $=id=>root.document.getElementById(id);
  const status=(message,error=false)=>{$('cloudStatus').textContent=message;$('cloudStatus').className='status'+(error?' danger':'')};
- let client=null,busy=false;
+ const baseURL=root.CourseCloudConfig&&root.CourseCloudConfig.apiBaseURL;
+ let client=null,busy=false,enabled=false;
  function controls(){
-  $('cloudLogin').disabled=busy||!client||client.isSignedIn();
+  $('cloudLogin').disabled=busy||!enabled||(client&&client.isSignedIn());
   $('cloudRead').disabled=busy||!client||!client.isSignedIn();
   $('cloudLogout').disabled=busy||!client||!client.isSignedIn();
   $('accountState').textContent=client&&client.isSignedIn()?'Telegram: вход выполнен':'Не выполнен';
   $('syncState').textContent='Автоматическая синхронизация выключена';
  }
  async function run(action){
-  if(busy||!client)return;
+  if(busy||!enabled)return;
   busy=true;controls();
   try{await action()}catch(error){
    status('Операция не выполнена: '+(error&&error.message?error.message:'неизвестная ошибка'),true);
   }finally{busy=false;controls()}
  }
+ function telegramData(){
+  return root.Telegram&&root.Telegram.WebApp&&root.Telegram.WebApp.initData||'';
+ }
+ async function loadTelegramSdk(){
+  if(telegramData())return;
+  // Only load the external SDK following explicit sign-in click.
+  await new Promise((resolve,reject)=>{
+   const script=root.document.createElement('script');
+   script.src='https://telegram.org/js/telegram-web-app.js';
+   script.onload=resolve;script.onerror=()=>reject(Error('Telegram SDK unavailable'));
+   root.document.head.append(script);
+  });
+ }
  try{
-  const url=root.CourseCloudConfig&&root.CourseCloudConfig.apiBaseURL;
-  const initData=root.Telegram&&root.Telegram.WebApp&&root.Telegram.WebApp.initData;
-  if(!url){status('Адрес облачного API не настроен. Локальное сравнение JSON доступно.');controls();return}
-  // Do not send Telegram credentials to an arbitrary URL entered by a user.
-  client=root.CourseCloudAccount.create({baseURL:url,fetchImpl:root.fetch.bind(root),initData});
-  if(!initData)status('Для входа открой эту страницу через Telegram Mini App. Локальные данные доступны.');
-  else status('Можно войти через Telegram. Никакие учебные данные при входе не отправляются.');
+  if(!baseURL){status('Адрес облачного API не настроен. Локальное сравнение JSON доступно.');controls();return}
+  // Validate fixed, public deployment configuration before any external request.
+  root.CourseCloudAccount.create({baseURL,fetchImpl:root.fetch.bind(root),initData:''});
+  enabled=true;
+  status('Для входа открой эту страницу внутри Telegram Mini App и нажми кнопку. Данные уроков не отправляются.');
   $('cloudLogin').addEventListener('click',()=>run(async()=>{
+   await loadTelegramSdk();
+   client=root.CourseCloudAccount.create({baseURL,fetchImpl:root.fetch.bind(root),initData:telegramData()});
    await client.login();
    status('Вход выполнен. Нажми «Получить облачную копию» для чтения данных.');
   }));
@@ -38,7 +52,7 @@
    try{await client.logout();status('Выход выполнен. Локальный прогресс не изменён.')}
    finally{root.CourseAccountPreviewPage.reset()}
   }));
-  root.addEventListener('pagehide',()=>client.clear(),{once:true});
+  root.addEventListener('pagehide',()=>{if(client)client.clear()},{once:true});
   controls();
  }catch(error){status('Облачный вход недоступен: '+error.message,true);controls()}
 })(typeof window!=='undefined'?window:globalThis);
