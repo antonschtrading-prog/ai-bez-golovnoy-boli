@@ -21,7 +21,7 @@ export async function verifyTelegramOidc(idToken,{clientId,nonce,fetchImpl=fetch
  try{header=json(parts[0]);claims=json(parts[1])}catch(_){throw Error('invalid_jwt')}
  if(header?.alg!=='RS256'||typeof header.kid!=='string'||header.kid.length>160||! /^[A-Za-z0-9_-]+$/.test(header.kid)||header.typ&&header.typ!=='JWT')throw Error('invalid_jwt_header');
  if(claims?.iss!==ISSUER||claims.aud!==clientId||claims.nonce!==nonce)throw Error('invalid_claims');
- if(typeof claims.sub!=='string'||! /^[1-9][0-9]{0,15}$/.test(claims.sub))throw Error('invalid_subject');
+ if(typeof claims.sub!=='string'||! /^[1-9][0-9]{0,19}$/.test(claims.sub))throw Error('invalid_subject');
  if(claims.id!==undefined&&String(claims.id)!==claims.sub)throw Error('mismatched_subject');
  const nowSeconds=Math.floor(now/1000);
  if(!Number.isSafeInteger(claims.iat)||!Number.isSafeInteger(claims.exp)||claims.iat>nowSeconds+30||claims.exp<=nowSeconds||claims.exp-claims.iat>3600||nowSeconds-claims.iat>300)throw Error('expired_identity');
