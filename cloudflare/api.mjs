@@ -24,7 +24,7 @@ async function bodyJSON(request){
   }
   const bytes=new Uint8Array(length);let offset=0;
   for(const part of pieces){bytes.set(part,offset);offset+=part.byteLength}
-  return JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(bytes));
+  return JSON.parse(new TextDecoder('utf-8',{fatal:true,ignoreBOM:false}).decode(bytes));
  }catch(e){if(e.status)throw e;throw Object.assign(Error('invalid_json'),{status:400})}
 }
 export function createHandler({db,origins=[],botToken=null,oidcClientId=null,jwksFetch=fetch}){
@@ -37,7 +37,7 @@ export function createHandler({db,origins=[],botToken=null,oidcClientId=null,jwk
   if(origin&&!allow.has(origin))return send(403,{error:'origin_denied'});
   if(url.search)return send(400,{error:'query_forbidden'},cors);
   if(request.method==='OPTIONS')return new Response(null,{status:204,headers:{...cors,
-   'Access-Control-Allow-Methods':'GET,PUT,DELETE,OPTIONS',
+   'Access-Control-Allow-Methods':'GET,POST,PUT,DELETE,OPTIONS',
    'Access-Control-Allow-Headers':'Authorization,Content-Type,If-Match,Idempotency-Key',
    'Access-Control-Max-Age':'300'}});
   const answer=(code,data,extra={})=>send(code,data,{...cors,...extra});

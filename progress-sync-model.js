@@ -131,4 +131,4 @@ function fromLegacy(legacy,deviceId){
  return envelope;
 }
 root.CourseSyncModel=Object.freeze({VERSION,KEYS:KEYS.slice(),makeEnvelope,readEnvelope,append,compare,fromLegacy});
-})(typeof window!=='undefined'?window:globalThis);
+})(globalThis);

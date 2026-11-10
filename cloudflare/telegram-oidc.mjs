@@ -11,7 +11,7 @@ function decode(input){
  return Uint8Array.from(binary,x=>x.charCodeAt(0));
 }
 function json(input){
- return JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(decode(input)));
+ return JSON.parse(new TextDecoder('utf-8',{fatal:true,ignoreBOM:false}).decode(decode(input)));
 }
 export async function verifyTelegramOidc(idToken,{clientId,nonce,fetchImpl=fetch,now=Date.now()}){
  if(typeof idToken!=='string'||idToken.length>12000||typeof clientId!=='string'||! /^[0-9]{1,24}$/.test(clientId)||typeof nonce!=='string'||! /^[A-Za-z0-9_-]{32,128}$/.test(nonce))throw Error('invalid_auth_request');
