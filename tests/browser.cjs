@@ -23,6 +23,29 @@ const http=require('node:http'),fs=require('node:fs'),path=require('node:path'),
  });
  assert(continueViewport.top>=-3&&continueViewport.top<180,'Continue must scroll lesson into mobile viewport: '+JSON.stringify(continueViewport));
  assert(continueViewport.scrollY>100,'Continue should not leave mobile page at top');
+ // Full beginner workflow: every next-step button must reveal the updated panel.
+ await page.locator('#continueBtn').click();
+ await page.locator('[data-next="quiz"]').click();
+ assert.match(await page.locator('#main').innerText(),/Три ситуации из практики/);
+ let position=await page.locator('#main').evaluate(el=>el.getBoundingClientRect().top);
+ assert(position>=-4&&position<180,'Quiz not visible on iPhone: '+position);
+ for(const [question,answer] of [[0,1],[1,1],[2,1]]){
+  await page.locator('[data-answer="'+question+':'+answer+'"]').click();
+ }
+ assert.equal(await page.locator('[data-next="practice"]').isEnabled(),true);
+ await page.locator('[data-next="practice"]').click();
+ assert.match(await page.locator('#main').innerText(),/Поставь задачу в незнакомой области/);
+ position=await page.locator('#main').evaluate(el=>el.getBoundingClientRect().top);
+ assert(position>=-4&&position<180,'Practice not visible on iPhone: '+position);
+ await page.locator('[data-next="report"]').click();
+ assert.match(await page.locator('#main').innerText(),/Что получилось на самом деле/);
+ position=await page.locator('#main').evaluate(el=>el.getBoundingClientRect().top);
+ assert(position>=-4&&position<180,'Report not visible on iPhone: '+position);
+ await page.locator('[data-field="task"]').fill('Задача для сохранения черновика и дальнейшего возобновления');
+ await page.reload();
+ await page.locator('#continueBtn').click();
+ assert.match(await page.locator('#main').innerText(),/Что получилось на самом деле/);
+ assert.match(await page.locator('[data-field="task"]').inputValue(),/Задача для сохранения черновика/);
  await page.locator('#catalogBtn').click();
  assert.match(await page.locator('#main').innerText(),/Программа|A1/);
  const catalogTop=await page.evaluate(()=>document.querySelector('#main').getBoundingClientRect().top);
