@@ -32,6 +32,23 @@
    if(!root.CourseAccountPreview||typeof root.CourseAccountPreview.remote!=='function')throw Error('Progress validator unavailable');
    return root.CourseAccountPreview.remote(result);
   }
+  async function browserChallenge(){
+   token=null;accountId=null;
+   const challenge=await request('/v1/auth/browser/challenge',{method:'POST'});
+   if(typeof challenge.nonce!=='string'||!/^[A-Za-z0-9_-]{32,128}$/.test(challenge.nonce)||
+      !Number.isFinite(challenge.expires)||challenge.expires<=Date.now())throw Error('Invalid browser login challenge');
+   return {nonce:challenge.nonce,expires:challenge.expires};
+  }
+  async function browserComplete(idToken,nonce){
+   if(typeof idToken!=='string'||idToken.length<50||idToken.length>20000||
+      typeof nonce!=='string'||!/^[A-Za-z0-9_-]{32,128}$/.test(nonce))throw Error('Invalid Telegram login token');
+   const result=await request('/v1/auth/browser',{method:'POST',
+    headers:{'Content-Type':'application/json'},body:JSON.stringify({idToken,nonce})});
+   if(typeof result.token!=='string'||!(/^[A-Za-z0-9_-]{32,256}$/).test(result.token)||
+      typeof result.accountId!=='string')throw Error('Invalid login response');
+   token=result.token;accountId=result.accountId;
+   return {accountId};
+  }
   async function save(sections,revision,operationId){
    if(!token)throw Error('Sign in first');
    if(!Number.isSafeInteger(revision)||revision<0||!(/^[A-Za-z0-9_-]{8,128}$/).test(operationId))throw Error('Invalid revision or operation ID');
@@ -45,7 +62,7 @@
    try{await request('/v1/session',{method:'DELETE'});}finally{token=null;accountId=null;}
   }
   function clear(){token=null;accountId=null}
-  return Object.freeze({login,read,save,logout,clear,isSignedIn:()=>!!token,account:()=>accountId});
+  return Object.freeze({login,browserChallenge,browserComplete,read,save,logout,clear,isSignedIn:()=>!!token,account:()=>accountId});
  }
  root.CourseCloudAccount=Object.freeze({create});
 })(typeof window!=='undefined'?window:globalThis);
