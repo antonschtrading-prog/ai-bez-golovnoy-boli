@@ -30,12 +30,14 @@ const http=require('node:http'),fs=require('node:fs'),path=require('node:path'),
  }
  // Keep partially completed work after changing topics and reloading.
  await page.goto(base+'/assessment.html');
+ await page.locator('#nav [data-level="A1"]').click();
  await page.locator('#work').fill('Черновик ответа для оценки, не удалять');
  await page.locator('#nav [data-level="A2"]').click();
  await page.reload();
  await page.locator('#nav [data-level="A1"]').click();
  assert.equal(await page.locator('#work').inputValue(),'Черновик ответа для оценки, не удалять');
  await page.goto(base+'/review.html');
+ await page.locator('#list [data-go="0"]').click();
  await page.locator('#work').fill('Черновик повторения');
  await page.locator('#list [data-go="1"]').click();
  await page.reload();
