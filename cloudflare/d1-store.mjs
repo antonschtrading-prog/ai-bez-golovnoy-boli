@@ -52,6 +52,27 @@ export function createD1Store(db){
    if(results[1]?.meta?.changes!==1||results[2]?.meta?.changes!==1)throw Error('D1 atomic audit failure');
    return{status:200,revision,sections};
   },
+  async verifiedTelegramAccount(telegramId,replay,expires){
+   if(typeof telegramId!=='string'||!/^[1-9][0-9]{0,15}$/.test(telegramId)||!Number.isSafeInteger(expires)||expires<=Date.now())throw Error('Invalid verified Telegram identity');
+   if(typeof replay!=='string'||! /^[a-f0-9]{64}$/.test(replay))throw Error('Invalid Telegram replay fingerprint');
+   if(await stmt(db,'SELECT hash FROM replays WHERE hash=?',replay).first())throw Error('replayed_init_data');
+   // Random account ID prevents takeover of a separately provisioned account.
+   const account='tg_'+crypto.randomUUID().replace(/-/g,'');
+   try{
+    await db.batch([
+     stmt(db,'INSERT INTO replays(hash,expires) VALUES(?,?)',replay,expires),
+     stmt(db,'INSERT INTO telegram(user,account) VALUES(?,?) ON CONFLICT(user) DO NOTHING',telegramId,account)
+    ]);
+   }catch(e){
+    if(await stmt(db,'SELECT hash FROM replays WHERE hash=?',replay).first())throw Error('replayed_init_data');
+    throw e;
+   }
+   const linked=await stmt(db,'SELECT account FROM telegram WHERE user=?',telegramId).first();
+   if(!linked?.account)throw Error('Missing Telegram identity mapping');
+   // Safe maintenance: keep the replay table bounded without paying for a scheduler.
+   try{await stmt(db,'DELETE FROM replays WHERE expires<?',Date.now()).run()}catch(_){}
+   return linked.account;
+  },
   // Trusted integration only: issued after external identity proof and consent.
   async issueSession(account,ttlMs=7*24*60*60*1000){
    if(typeof account!=='string'||!/^[A-Za-z0-9_-]{1,128}$/.test(account))throw Error('Invalid account');
