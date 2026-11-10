@@ -71,8 +71,21 @@ for(const k of keys){
  if(!checks[k](item))throw Error('Повреждена структура '+k);
 }
 if(!confirm('Заменить текущий прогресс в этом браузере данными из копии? Существующие результаты будут перезаписаны.'))return;
-const previous={};for(const k of keys)previous[k]=localStorage.getItem(k);
-try{for(const k of keys){if(window.CourseSyncModel.KEYS.includes(k))window.CourseStorage.write(localStorage,k,JSON.stringify(parsed.items[k]));else localStorage.setItem(k,JSON.stringify(parsed.items[k]))}}catch(e){for(const k of keys){try{if(previous[k]===null)localStorage.removeItem(k);else localStorage.setItem(k,previous[k])}catch(_){} }throw Error('Браузер не разрешил сохранение')}
+const changes=[];
+try{
+ for(const k of keys){
+  const before=localStorage.getItem(k);
+  const after=JSON.stringify(parsed.items[k]);
+  if(window.CourseSyncModel.KEYS.includes(k))window.CourseStorage.write(localStorage,k,after);
+  else localStorage.setItem(k,after);
+  if(localStorage.getItem(k)!==after)throw Error('Сохранённые данные отличаются от копии: '+k);
+  if(before!==after)changes.push({key:k,before,after});
+ }
+}catch(e){
+ const rollback=window.CourseStorage.rollbackBatch(localStorage,changes);
+ if(!rollback.complete)throw Error('Импорт прерван; откат выполнен НЕ полностью. Не закрывай вкладку, экспортируй текущие данные и проверь разделы: '+rollback.failures.join(', '));
+ throw Error('Импорт отменён, исходные данные восстановлены. Причина: '+e.message);
+}
 status.textContent='Данные восстановлены. При переходе в разделы они будут прочитаны заново.';update();
 }catch(err){status.textContent='Восстановление не удалось: '+err.message}
 event.target.value='';
