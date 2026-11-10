@@ -14,6 +14,8 @@ function handler({store,origins=[],botToken}){
   try{
   const token=/^Bearer ([A-Za-z0-9_-]{32,256})$/.exec(req.headers.authorization||'')?.[1];
   const account=token&&store.authenticate(token);if(!account)return send(401,{error:'unauthorized'});
+   if(req.url==='/v1/session'&&req.method==='GET')return send(200,{accountId:account,authenticated:true});
+   if(req.url==='/v1/session'&&req.method==='DELETE'){store.revoke(token);return send(200,{signedOut:true})}
    if(req.url==='/v1/progress'&&req.method==='GET'){const data=store.get(account);res.setHeader('ETag',`"${data.revision}"`);return send(200,data)}
    if(req.url==='/v1/progress/versions'&&req.method==='GET')return send(200,{versions:store.history(account)});
    if(!((req.url==='/v1/progress'&&req.method==='PUT')||(req.url==='/v1/telegram/link'&&req.method==='POST')))return send(404,{error:'not_found'});
