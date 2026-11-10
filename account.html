@@ -55,8 +55,20 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px;background:#0c172
 <details><summary>Технические параметры сравнения</summary><pre id="technical"></pre></details>
 </div>
 </section>
+<section aria-labelledby="cloud-upload-title">
+<h2 id="cloud-upload-title">3. Подтверждённая отправка в облако</h2>
+<p>Только после входа через Telegram. Сначала получи и сравни <strong>актуальные</strong> серверную и локальную копии. Никакого автоматического сохранения на сервере нет.</p>
+<button id="cloudPrepare" disabled>Проверить перед отправкой</button>
+<p id="cloudWriteStatus" role="status" aria-live="polite" class="status">Войдите через Telegram, чтобы подготовить отправку.</p>
+<div id="cloudApproval" hidden>
+<p id="cloudProposalDetails"></p>
+<label><input id="cloudConfirmed" type="checkbox"> Я проверил локальные работы и резервную копию, согласен отправить объединённый снимок в свой облачный аккаунт.</label>
+<p><button id="cloudCommit" disabled>Подтвердить и отправить в облако</button> <button id="cloudCancel" class="secondary">Отмена</button></p>
+</div>
+<p class="sub">При ошибке сети, расхождении данных или конфликте ревизий повторное подтверждение потребуется после нового сравнения. Локальные данные не удаляются.</p>
+</section>
 <section aria-labelledby="safety-title">
-<h2 id="safety-title">3. Перед подключением синхронизации</h2>
+<h2 id="safety-title">4. Перед подключением синхронизации</h2>
 <p>Никакого автоматического переноса старого прогресса при входе не будет. Сначала покажем сравнение, затем запросим явное подтверждение. Конфликты одного и того же ответа должны решаться отдельно.</p>
 <p class="sub">Внимание: скачанный JSON может содержать тексты твоих работ. Не пересылай его посторонним.</p>
 </section>
@@ -70,6 +82,7 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px;background:#0c172
 <script src="./account-preview-page.js"></script>
 <script src="./account-cloud-config.js"></script>
 <script src="./account-cloud.js"></script>
+<script src="./progress-sync-commit.js"></script>
 <script src="./account-cloud-page.js"></script>
 <script src="./course-nav.js" defer></script>
 </body></html>
