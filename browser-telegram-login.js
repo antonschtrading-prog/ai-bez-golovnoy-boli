@@ -33,8 +33,7 @@ function create({baseURL,clientId,telegramLogin,fetchImpl=root.fetch.bind(root)}
     if(result?.error||!result?.id_token)reject(Error('Telegram authorization was cancelled'));
     else resolve(result.id_token);
    })}catch(e){reject(e)}
-  });
-  .then(async auth=>{
+  }).then(async auth=>{
     const session=await post('/v1/auth/browser',{nonce:challenge.nonce,idToken:auth});
     if(typeof session.token!=='string'||typeof session.accountId!=='string')throw Error('Invalid server session');
     token=session.token;accountId=session.accountId;
