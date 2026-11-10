@@ -54,7 +54,7 @@ export function createD1Store(db){
   },
   async createOidcChallenge(){
    const bytes=new Uint8Array(32);crypto.getRandomValues(bytes);
-   const nonce=btoa(String.fromCharCode(...bytes)).replace(/\\+/g,'-').replace(/\\//g,'_').replace(/=+$/,'');
+   const nonce=btoa(String.fromCharCode(...bytes)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
    const expires=Date.now()+5*60*1000;
    await stmt(db,'INSERT INTO oidc_challenges(nonce,expires) VALUES(?,?)',nonce,expires).run();
    // Opportunistic cleanup: no paid cron/scheduler.
