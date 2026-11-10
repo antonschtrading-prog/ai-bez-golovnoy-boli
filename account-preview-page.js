@@ -75,6 +75,14 @@ function download(){
   status('Предварительный снимок скачан. На сервер ничего не отправлено.');
  }catch(e){status('Экспорт не выполнен: '+e.message,true)}
 }
+// Used only after an explicit, authenticated, read-only cloud fetch.
+function loadRemoteSnapshot(record){
+ candidate=root.CourseAccountPreview.remote(record);result=null;
+ $('cloudFile').value='';$('inspect').disabled=false;
+ $('comparison').hidden=true;$('conflictArea').hidden=true;$('safeArea').hidden=true;
+ status('Облачная копия получена. Нажми «Сравнить две копии».');
+}
+root.CourseAccountPreviewPage=Object.freeze({loadRemoteSnapshot,reset});
 $('cloudFile').addEventListener('change',choose);
 $('inspect').addEventListener('click',inspect);
 $('clear').addEventListener('click',reset);
