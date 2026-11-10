@@ -42,6 +42,31 @@ const http=require('node:http'),fs=require('node:fs'),path=require('node:path'),
  assert.equal(secondTerm.count,2);
  assert.equal(secondTerm.level,2);
  await page.evaluate(()=>localStorage.clear());
+ // A corrected first-answer mistake stays visible as history, not as an unresolved error.
+ await page.goto(base+'/assessment.html');
+ await page.evaluate(()=>localStorage.clear());
+ await page.reload();
+ await page.locator('#nav [data-level="A1"]').click();
+ await page.locator('[data-answer="0:0"]').click();
+ let record=await page.evaluate(()=>JSON.parse(localStorage.getItem('ai-course-assessment-v1')).results.A1);
+ assert.deepEqual(record.errors,[0]);
+ assert.equal(record.firstAnswers['0'],0);
+ await page.goto(base+'/adaptive-route.html');
+ assert.match(await page.locator('#headline').innerText(),/Повтори контрольную работу A1/);
+ await page.goto(base+'/review.html');
+ assert.match(await page.locator('#stats').innerText(),/Незакрытые ошибки экзамена: A1/);
+ await page.goto(base+'/assessment.html');
+ await page.locator('[data-answer="0:1"]').click();
+ record=await page.evaluate(()=>JSON.parse(localStorage.getItem('ai-course-assessment-v1')).results.A1);
+ assert.deepEqual(record.errors,[]);
+ assert.equal(record.firstAnswers['0'],0,'First incorrect choice must remain intact');
+ await page.goto(base+'/review.html');
+ assert.match(await page.locator('#stats').innerText(),/Незакрытые ошибки экзамена: нет/);
+ assert.match(await page.locator('#stats').innerText(),/исправленные при повторной попытке: A1/);
+ await page.goto(base+'/adaptive-route.html');
+ assert.match(await page.locator('#recommendations').innerText(),/Закрепи исправленные ошибки A1/);
+ assert.doesNotMatch(await page.locator('#recommendations').innerText(),/Повтори контрольную работу A1/);
+ await page.evaluate(()=>localStorage.clear());
  // Adaptive recommendations must not forget an assessment just because work is blank.
  await page.goto(base+'/adaptive-route.html');
  await page.evaluate(()=>{
