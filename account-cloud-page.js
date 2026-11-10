@@ -20,7 +20,8 @@
   busy=true;controls();
   try{await action()}catch(error){
    if(proposalId)discardProposal();
-   status('Операция не выполнена: '+(error&&error.message?error.message:'неизвестная ошибка'),true);
+   const message='Операция не выполнена: '+(error&&error.message?error.message:'неизвестная ошибка');
+   status(message,true);writeStatus(message+' Повторное сравнение обязательно.',true);
   }finally{busy=false;controls()}
  }
  function telegramData(){
