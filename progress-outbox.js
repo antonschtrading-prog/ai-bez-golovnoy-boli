@@ -63,12 +63,56 @@ function create({storage,accountId,randomUUID=()=>root.crypto.randomUUID()}){
   write({...latest,pending:null,conflict:null});
   return{status:'synced',revision:result.revision};
  }
+ /* Safer opt-in delivery: read back server state before and after a retry.
+  * This method is never called automatically; pending data survives uncertainty.
+  */
+ async function flushVerified(client){
+  if(!client||typeof client.read!=='function'||typeof client.save!=='function')throw Error('Read/write client required');
+  const original=read();
+  if(!original.pending)return {status:'idle'};
+  if(original.conflict)return {status:'conflict',reason:original.conflict.reason};
+  const p=original.pending;
+  const unchanged=()=>JSON.stringify(read().pending)===JSON.stringify(p);
+  const sameSections=x=>JSON.stringify(x)===JSON.stringify(p.sections);
+  async function cloud(){
+   const response=await client.read();
+   if(!response||!Number.isSafeInteger(response.revision)||response.revision<0)throw Error('Invalid cloud response');
+   const sections=root.CourseSyncModel.makeEnvelope(response.sections,{deviceId:'outbox-verify'}).sections;
+   return {revision:response.revision,sections};
+  }
+  function resolveOnServer(record){
+   if(record.revision>p.baseRevision&&sameSections(record.sections)){
+    if(!unchanged())return {status:'changed',reason:'outbox_modified'};
+    write({...read(),pending:null,conflict:null});
+    return {status:'synced',revision:record.revision,recovered:true};
+   }
+   if(record.revision!==p.baseRevision){
+    if(!unchanged())return {status:'changed',reason:'outbox_modified'};
+    write({...read(),conflict:{reason:'server_revision_conflict',serverRevision:record.revision}});
+    return {status:'conflict',reason:'server_revision_conflict'};
+   }
+   return null;
+  }
+  let before;
+  try{before=await cloud()}catch(_){return {status:'retry',reason:'read_failed'}}
+  if(!unchanged())return {status:'changed',reason:'outbox_modified'};
+  const already=resolveOnServer(before);
+  if(already)return already;
+  try{await client.save(clone(p.sections),p.baseRevision,p.id)}
+  catch(_){return {status:'retry',reason:'network_or_server_error'}}
+  if(!unchanged())return {status:'changed',reason:'outbox_modified'};
+  let after;
+  try{after=await cloud()}catch(_){return {status:'retry',reason:'verification_failed'}}
+  if(!unchanged())return {status:'changed',reason:'outbox_modified'};
+  const outcome=resolveOnServer(after);
+  return outcome||{status:'retry',reason:'unverified_server_state'};
+ }
  function discard(){
   const state=read();
   if(!state.pending)return state;
   return write({...state,pending:null,conflict:null});
  }
- return Object.freeze({key,read,enqueue,flush,discard});
+ return Object.freeze({key,read,enqueue,flush,flushVerified,discard});
 }
 root.CourseOutbox=Object.freeze({create});
 })(typeof window!=='undefined'?window:globalThis);
