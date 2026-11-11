@@ -68,8 +68,20 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px;background:#0c172
 </div>
 <p class="sub">При ошибке сети, расхождении данных или конфликте ревизий повторное подтверждение потребуется после нового сравнения. Локальные данные не удаляются.</p>
 </section>
+<section aria-labelledby="queue-title">
+<h2 id="queue-title">4. Офлайн-очередь</h2>
+<p>Сохрани проверенное предложение на этом устройстве, затем отправь его вручную, когда интернет будет доступен. Не удаляй данные из браузера до завершения синхронизации.</p>
+<button id="queueInspect" disabled>Проверить и подготовить очередь</button>
+<div id="queueApproval" hidden>
+<p id="queueProposal"></p>
+<label><input type="checkbox" id="queueConsent"> Подтверждаю создание локальной очереди с выбранными данными моего курса.</label>
+<p><button id="queueApprove" disabled>Сохранить в очередь</button> <button class="secondary" id="queueCancel">Отмена</button></p>
+</div>
+<p><button class="secondary" id="queueRetry" disabled>Проверить и отправить ожидающее</button> <button class="secondary" id="queueExport" disabled>Скачать ожидающую копию</button></p>
+<p id="queueStatus" class="status" role="status" aria-live="polite">Очередь доступна после входа в Telegram.</p>
+</section>
 <section aria-labelledby="safety-title">
-<h2 id="safety-title">4. Перед подключением синхронизации</h2>
+<h2 id="safety-title">5. Перед подключением синхронизации</h2>
 <p>Никакого автоматического переноса старого прогресса при входе не будет. Сначала покажем сравнение, затем запросим явное подтверждение. Конфликты одного и того же ответа должны решаться отдельно.</p>
 <p class="sub">Внимание: скачанный JSON может содержать тексты твоих работ. Не пересылай его посторонним.</p>
 </section>
@@ -84,6 +96,9 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px;background:#0c172
 <script src="./account-cloud-config.js"></script>
 <script src="./account-cloud.js"></script>
 <script src="./progress-sync-commit.js"></script>
+<script src="./progress-outbox.js"></script>
+<script src="./account-outbox-controller.js"></script>
+<script src="./account-queue-page.js"></script>
 <script src="./account-cloud-page.js"></script>
 <script src="./course-nav.js" defer></script>
 </body></html>
