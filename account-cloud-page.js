@@ -15,8 +15,8 @@
   $('browserAuthorize').hidden=!browserNonce;
   $('cloudRead').disabled=busy||!client||!client.isSignedIn();
   $('cloudLogout').disabled=busy||!client||!client.isSignedIn();
-  $('cloudPrepare').disabled=busy||!client||!client.isSignedIn();
-  $('cloudCommit').disabled=busy||!client||!client.isSignedIn()||!proposalId||!$('cloudConfirmed').checked;
+  $('cloudPrepare').disabled=busy||!client||!client.isSignedIn()||!root.CourseAccountQueuePage.readyForDirectSave();
+  $('cloudCommit').disabled=busy||!client||!client.isSignedIn()||!proposalId||!$('cloudConfirmed').checked||!root.CourseAccountQueuePage.readyForDirectSave();
   $('accountState').textContent=client&&client.isSignedIn()?'Telegram: вход выполнен':'Не выполнен';
   $('syncState').textContent='Автоматическая синхронизация выключена';
  }
@@ -53,6 +53,7 @@
    client=root.CourseCloudAccount.create({baseURL,fetchImpl:root.fetch.bind(root),initData:telegramData()});
    discardProposal();clearBrowserAttempt();
    await client.login();
+   root.CourseAccountQueuePage.setClient(client);
    writer=root.CourseSyncCommit.create({storage:root.localStorage,client,uuid:()=>root.crypto.randomUUID()});
    status('Вход выполнен. Нажми «Получить облачную копию» для чтения данных.');
   }));
@@ -63,7 +64,7 @@
    status('Облачная копия проверена. Для сравнения нажми «Сравнить две копии» ниже.');
   }));
   $('cloudLogout').addEventListener('click',()=>run(async()=>{
-   discardProposal();clearBrowserAttempt();
+   discardProposal();clearBrowserAttempt();root.CourseAccountQueuePage.forget();
    try{await client.logout();status('Выход выполнен. Локальный прогресс не изменён.')}
    finally{root.CourseAccountPreviewPage.reset()}
   }));
@@ -107,6 +108,7 @@
     }catch(e){finish(e)}
    });
    await client.browserComplete(idToken,nonce);
+   root.CourseAccountQueuePage.setClient(client);
    writer=root.CourseSyncCommit.create({storage:root.localStorage,client,uuid:()=>root.crypto.randomUUID()});
    status('Вход через браузер выполнен. Теперь можно прочитать облачную копию.');
   }));
@@ -115,6 +117,7 @@
   $('cloudPrepare').addEventListener('click',()=>run(async()=>{
    discardProposal();
    if(!writer)throw Error('Войди в Telegram заново');
+   if(!root.CourseAccountQueuePage.readyForDirectSave())throw Error('Сначала обработай ожидающую очередь');
    const result=await writer.inspect();
    if(result.status!=='ready'){
     writeStatus('Конфликтов: '+result.conflicts.length+'. Отправка заблокирована; сохрани и сравни обе копии.',true);
@@ -130,6 +133,7 @@
   $('cloudCommit').addEventListener('click',()=>run(async()=>{
    const id=proposalId;
    if(!id||!$('cloudConfirmed').checked)throw Error('Не подтверждена текущая версия');
+   if(!root.CourseAccountQueuePage.readyForDirectSave())throw Error('Есть ожидающая операция, прямая отправка заблокирована');
    // Confirmations are one-use, including network failure or an uncertain server response.
    proposalId=null;$('cloudApproval').hidden=true;$('cloudConfirmed').checked=false;
    const result=await writer.commit(id,true);
@@ -140,7 +144,7 @@
    root.CourseAccountPreviewPage.reset();
    writeStatus('Облачная копия сохранена, ревизия '+result.revision+'. Локальный прогресс не изменён.');
   }));
-  root.addEventListener('pagehide',()=>{discardProposal();clearBrowserAttempt();if(client)client.clear()},{once:true});
+  root.addEventListener('pagehide',()=>{discardProposal();clearBrowserAttempt();root.CourseAccountQueuePage.forget();if(client)client.clear()},{once:true});
   controls();
  }catch(error){status('Облачный вход недоступен: '+error.message,true);controls()}
 })(typeof window!=='undefined'?window:globalThis);
