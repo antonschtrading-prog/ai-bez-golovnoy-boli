@@ -246,6 +246,7 @@ const http=require('node:http'),fs=require('node:fs'),path=require('node:path'),
  assert.equal(await page.locator('#fileRecoveryApply').isDisabled(),true);
  await page.locator('#fileRecoveryConsent').check();
  await page.locator('#fileRecoveryApply').click();
+ await page.waitForFunction(()=>/Восстановлено разделов|Восстановление остановлено/.test(document.querySelector('#fileRecoveryStatus').textContent));
  assert.match(await page.locator('#fileRecoveryStatus').innerText(),/Восстановлено разделов/);
  assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('ai-no-headache-v1')).deepNotes.fromFile),
   'Восстановленное незавершённое задание');
