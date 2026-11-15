@@ -56,6 +56,7 @@
    root.CourseAccountQueuePage.setClient(client);
    root.CourseAccountRestorePage.setClient(client);
    root.CourseAccountBackupsPage.setClient(client);
+   root.CourseFileRecoveryPage.setClient(client);
    writer=root.CourseSyncCommit.create({storage:root.localStorage,client,uuid:()=>root.crypto.randomUUID()});
    status('Вход выполнен. Нажми «Получить облачную копию» для чтения данных.');
   }));
@@ -66,7 +67,7 @@
    status('Облачная копия проверена. Для сравнения нажми «Сравнить две копии» ниже.');
   }));
   $('cloudLogout').addEventListener('click',()=>run(async()=>{
-   discardProposal();clearBrowserAttempt();root.CourseAccountQueuePage.forget();root.CourseAccountRestorePage.clear();root.CourseAccountBackupsPage.reset();
+   discardProposal();clearBrowserAttempt();root.CourseAccountQueuePage.forget();root.CourseAccountRestorePage.clear();root.CourseAccountBackupsPage.reset();root.CourseFileRecoveryPage.clear();
    try{await client.logout();status('Выход выполнен. Локальный прогресс не изменён.')}
    finally{root.CourseAccountPreviewPage.reset()}
   }));
