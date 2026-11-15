@@ -224,6 +224,36 @@ const http=require('node:http'),fs=require('node:fs'),path=require('node:path'),
  const refreshedPlan=JSON.parse(fs.readFileSync(await (await refreshedDownloadEvent).path(),'utf8'));
  assert.equal(refreshedPlan.sections['ai-no-headache-v1'].deepNotes.savedLater,'новая работа во второй вкладке');
  assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('ai-no-headache-v1')).deepNotes.savedLater),'новая работа во второй вкладке');
+ // Downloaded backup restore: explicit file selection, consent, durable local data.
+ const verifiedAccount='tg_testaccount123456789';
+ await page.evaluate(account=>{
+  const mock={isSignedIn:()=>true,account:()=>account};
+  CourseAccountBackupsPage.setClient(mock);
+  CourseFileRecoveryPage.setClient(mock);
+ },verifiedAccount);
+ const fileBackup=await page.evaluate(account=>{
+  const current=JSON.parse(localStorage.getItem('ai-no-headache-v1'));
+  const values=Object.fromEntries(CourseSyncModel.KEYS.map(key=>[key,null]));
+  values['ai-no-headache-v1']=JSON.stringify({...current,deepNotes:{...current.deepNotes,fromFile:'Восстановленное незавершённое задание'}});
+  return JSON.stringify({format:'ai-course-cloud-restore-backup-v1',accountId:account,
+   createdAt:'2026-11-15T00:00:00.000Z',cloudRevision:5,values});
+ },verifiedAccount);
+ await page.locator('#recoveryFile').setInputFiles({
+  name:'backup.json',mimeType:'application/json',buffer:Buffer.from(fileBackup)
+ });
+ await page.locator('#fileRecoveryInspect').click();
+ assert(await page.locator('#fileRecoveryApproval').isVisible());
+ assert.equal(await page.locator('#fileRecoveryApply').isDisabled(),true);
+ await page.locator('#fileRecoveryConsent').check();
+ await page.locator('#fileRecoveryApply').click();
+ await page.waitForFunction(()=>/Восстановлено разделов|Восстановление остановлено/.test(document.querySelector('#fileRecoveryStatus').textContent));
+ assert.match(await page.locator('#fileRecoveryStatus').innerText(),/Восстановлено разделов/);
+ assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('ai-no-headache-v1')).deepNotes.fromFile),
+  'Восстановленное незавершённое задание');
+ assert(await page.locator('#backupSelect option').count()>0,'Previous local version should be available for export');
+ await page.reload();
+ assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('ai-no-headache-v1')).deepNotes.fromFile),
+  'Восстановленное незавершённое задание');
  await page.addScriptTag({url:base+'/progress-sync-model.js'});
  await page.addScriptTag({url:base+'/progress-indexeddb.js'});
  const indexedResult=await page.evaluate(async()=>{

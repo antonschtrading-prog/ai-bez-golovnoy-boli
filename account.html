@@ -100,8 +100,20 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px;background:#0c172
 <p><button id="backupDownload" disabled>Скачать выбранную копию</button></p>
 <p id="backupStatus" class="status" role="status" aria-live="polite">Войди в Telegram для просмотра своих копий.</p>
 </section>
+<section aria-labelledby="file-recovery-title">
+<h2 id="file-recovery-title">7. Восстановить данные из скачанной резервной копии</h2>
+<p>Выбери JSON-файл, ранее скачанный с этой страницы. Проверим содержимое, сравним текущие ответы с сохранёнными и покажем план. При конфликтах перенос не выполняется. Все данные останутся на устройстве.</p>
+<p><label for="recoveryFile">Резервный файл JSON</label> <input id="recoveryFile" type="file" accept=".json,application/json" disabled></p>
+<button id="fileRecoveryInspect" disabled>Проверить выбранный файл</button>
+<div id="fileRecoveryApproval" hidden>
+<p id="fileRecoveryPlan"></p>
+<label><input type="checkbox" id="fileRecoveryConsent"> Подтверждаю перенос из файла с созданием новой резервной копии текущих ответов.</label>
+<p><button id="fileRecoveryApply" disabled>Восстановить из файла</button> <button id="fileRecoveryCancel" class="secondary">Отмена</button></p>
+</div>
+<p id="fileRecoveryStatus" class="status" role="status" aria-live="polite">После авторизации можно проверить файл.</p>
+</section>
 <section aria-labelledby="safety-title">
-<h2 id="safety-title">7. Перед подключением синхронизации</h2>
+<h2 id="safety-title">8. Перед подключением синхронизации</h2>
 <p>Никакого автоматического переноса старого прогресса при входе не будет. Сначала покажем сравнение, затем запросим явное подтверждение. Конфликты одного и того же ответа должны решаться отдельно.</p>
 <p class="sub">Внимание: скачанный JSON может содержать тексты твоих работ. Не пересылай его посторонним.</p>
 </section>
@@ -124,6 +136,8 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px;background:#0c172
 <script src="./account-cloud-backups.js"></script>
 <script src="./account-cloud-backups-page.js"></script>
 <script src="./account-cloud-restore-page.js"></script>
+<script src="./account-file-recovery.js"></script>
+<script src="./account-file-recovery-page.js"></script>
 <script src="./account-cloud-page.js"></script>
 <script src="./course-nav.js" defer></script>
 </body></html>
