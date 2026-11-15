@@ -61,7 +61,8 @@
  $('fileRecoveryCancel').addEventListener('click',()=>{discard();status('Восстановление из файла отменено.');controls()});
  $('fileRecoveryApply').addEventListener('click',()=>run(async()=>{
   const saved=ticket,confirmed=$('fileRecoveryConsent').checked;
-  discard();
+  // Consume the visible approval without cancelling the coordinator proposal.
+  ticket=null;$('fileRecoveryApproval').hidden=true;$('fileRecoveryConsent').checked=false;
   const result=await recovery.apply(saved,confirmed);
   if(result.status!=='restored')throw Error('Неожиданный результат');
   status('Восстановлено разделов: '+result.written+'. Резервная копия прежних данных: '+result.backupKey+'. Открой занятие заново.');
