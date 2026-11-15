@@ -54,6 +54,7 @@
    discardProposal();clearBrowserAttempt();
    await client.login();
    root.CourseAccountQueuePage.setClient(client);
+   root.CourseAccountRestorePage.setClient(client);
    writer=root.CourseSyncCommit.create({storage:root.localStorage,client,uuid:()=>root.crypto.randomUUID()});
    status('Вход выполнен. Нажми «Получить облачную копию» для чтения данных.');
   }));
@@ -64,7 +65,7 @@
    status('Облачная копия проверена. Для сравнения нажми «Сравнить две копии» ниже.');
   }));
   $('cloudLogout').addEventListener('click',()=>run(async()=>{
-   discardProposal();clearBrowserAttempt();root.CourseAccountQueuePage.forget();
+   discardProposal();clearBrowserAttempt();root.CourseAccountQueuePage.forget();root.CourseAccountRestorePage.clear();
    try{await client.logout();status('Выход выполнен. Локальный прогресс не изменён.')}
    finally{root.CourseAccountPreviewPage.reset()}
   }));
@@ -144,7 +145,7 @@
    root.CourseAccountPreviewPage.reset();
    writeStatus('Облачная копия сохранена, ревизия '+result.revision+'. Локальный прогресс не изменён.');
   }));
-  root.addEventListener('pagehide',()=>{discardProposal();clearBrowserAttempt();root.CourseAccountQueuePage.forget();if(client)client.clear()},{once:true});
+  root.addEventListener('pagehide',()=>{discardProposal();clearBrowserAttempt();root.CourseAccountQueuePage.forget();root.CourseAccountRestorePage.clear();if(client)client.clear()},{once:true});
   controls();
  }catch(error){status('Облачный вход недоступен: '+error.message,true);controls()}
 })(typeof window!=='undefined'?window:globalThis);
