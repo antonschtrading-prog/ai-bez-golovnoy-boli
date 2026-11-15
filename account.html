@@ -80,8 +80,20 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px;background:#0c172
 <p><button class="secondary" id="queueRetry" disabled>Проверить и отправить ожидающее</button> <button class="secondary" id="queueExport" disabled>Скачать ожидающую копию</button></p>
 <p id="queueStatus" class="status" role="status" aria-live="polite">Очередь доступна после входа в Telegram.</p>
 </section>
+<section aria-labelledby="restore-title">
+<h2 id="restore-title">5. Получить прогресс из облака на это устройство</h2>
+<p>После входа можно перенести облачные ответы и незаконченные задания в этот браузер. Сначала проверяем конфликты, затем создаём полную резервную копию текущих разделов. Отправки на сервер при восстановлении нет.</p>
+<button id="restoreInspect" disabled>Проверить облако и локальные данные</button>
+<div id="restoreApproval" hidden>
+<p id="restorePlan"></p>
+<label><input id="restoreConsent" type="checkbox"> Я подтверждаю перенос и сохранение резервной копии моего текущего прогресса.</label>
+<p><button id="restoreApply" disabled>Подтвердить восстановление на устройстве</button> <button id="restoreCancel" class="secondary">Отмена</button></p>
+</div>
+<p id="restoreStatus" role="status" aria-live="polite" class="status">Восстановление доступно после входа.</p>
+<p class="sub">При конфликте незавершённых ответов перенос остановится. После успеха открой нужный урок заново — сохранённые поля загрузятся из локального хранилища.</p>
+</section>
 <section aria-labelledby="safety-title">
-<h2 id="safety-title">5. Перед подключением синхронизации</h2>
+<h2 id="safety-title">6. Перед подключением синхронизации</h2>
 <p>Никакого автоматического переноса старого прогресса при входе не будет. Сначала покажем сравнение, затем запросим явное подтверждение. Конфликты одного и того же ответа должны решаться отдельно.</p>
 <p class="sub">Внимание: скачанный JSON может содержать тексты твоих работ. Не пересылай его посторонним.</p>
 </section>
@@ -99,6 +111,9 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px;background:#0c172
 <script src="./progress-outbox.js"></script>
 <script src="./account-outbox-controller.js"></script>
 <script src="./account-queue-page.js"></script>
+<script src="./progress-storage.js"></script>
+<script src="./account-cloud-restore.js"></script>
+<script src="./account-cloud-restore-page.js"></script>
 <script src="./account-cloud-page.js"></script>
 <script src="./course-nav.js" defer></script>
 </body></html>
