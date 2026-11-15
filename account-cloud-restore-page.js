@@ -61,6 +61,7 @@ $('restoreApply').addEventListener('click',()=>run(async()=>{
  status('Восстановлено разделов: '+result.written+
   '. Резервная копия сохранена: '+result.backupKey+
   '. Открой незавершённый урок для продолжения.');
+ root.CourseAccountBackupsPage.refresh();
  const count=$('localCount');
  if(count)count.textContent=String(Object.keys(root.CourseAccountPreview.local(root.localStorage).sections).length);
 }));

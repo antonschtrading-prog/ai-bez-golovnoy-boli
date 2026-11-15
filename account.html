@@ -9,10 +9,10 @@
 h1{font-size:clamp(26px,5vw,40px);line-height:1.18}h2{font-size:21px;margin:0 0 8px}a{color:#aeedc1}
 section{background:#17263e;border:1px solid #425b79;border-radius:16px;padding:20px;margin:18px 0}
 p{margin:8px 0 13px}.sub{color:#bbcde0}.notice{border-left:4px solid #e6c88d;padding:9px 12px;background:#243149;border-radius:5px}
-button,input{font:inherit}button{border:1px solid #a6d5b6;background:#a9e9bf;color:#102519;font-weight:700;border-radius:10px;padding:10px 16px;cursor:pointer;margin:7px 9px 7px 0}
+button,input,select{font:inherit}button{border:1px solid #a6d5b6;background:#a9e9bf;color:#102519;font-weight:700;border-radius:10px;padding:10px 16px;cursor:pointer;margin:7px 9px 7px 0}
 button.secondary{background:#28415d;border-color:#6c8faa;color:#f5fbff}button:disabled{opacity:.46;cursor:not-allowed}
 button:focus-visible,a:focus-visible,input:focus-visible{outline:3px solid #f6d99d;outline-offset:2px}
-input[type=file]{max-width:100%;padding:9px;background:#263e59;border-radius:8px}
+input[type=file],select{max-width:100%;padding:9px;background:#263e59;color:#edf4ff;border-radius:8px}
 dl{display:grid;grid-template-columns:minmax(120px,1fr) 2fr;gap:6px;margin:6px 0}
 dt{color:#b8c9df}dd{margin:0;font-weight:650;overflow-wrap:anywhere}
 #conflicts{padding-left:20px}#conflicts li{padding:7px 0;overflow-wrap:anywhere}
@@ -92,8 +92,16 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px;background:#0c172
 <p id="restoreStatus" role="status" aria-live="polite" class="status">Восстановление доступно после входа.</p>
 <p class="sub">При конфликте незавершённых ответов перенос остановится. После успеха открой нужный урок заново — сохранённые поля загрузятся из локального хранилища.</p>
 </section>
+<section aria-labelledby="backups-title">
+<h2 id="backups-title">6. Резервные копии до восстановления</h2>
+<p>Здесь хранятся локальные снимки, созданные перед импортом данных из облака. Скачай копию на устройство, прежде чем очищать браузер. В файле могут быть тексты твоих ответов.</p>
+<button id="backupRefresh" disabled class="secondary">Показать резервные копии</button>
+<p><label for="backupSelect">Сохранённая копия</label> <select id="backupSelect" disabled></select></p>
+<p><button id="backupDownload" disabled>Скачать выбранную копию</button></p>
+<p id="backupStatus" class="status" role="status" aria-live="polite">Войди в Telegram для просмотра своих копий.</p>
+</section>
 <section aria-labelledby="safety-title">
-<h2 id="safety-title">6. Перед подключением синхронизации</h2>
+<h2 id="safety-title">7. Перед подключением синхронизации</h2>
 <p>Никакого автоматического переноса старого прогресса при входе не будет. Сначала покажем сравнение, затем запросим явное подтверждение. Конфликты одного и того же ответа должны решаться отдельно.</p>
 <p class="sub">Внимание: скачанный JSON может содержать тексты твоих работ. Не пересылай его посторонним.</p>
 </section>
@@ -113,6 +121,8 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px;background:#0c172
 <script src="./account-queue-page.js"></script>
 <script src="./progress-storage.js"></script>
 <script src="./account-cloud-restore.js"></script>
+<script src="./account-cloud-backups.js"></script>
+<script src="./account-cloud-backups-page.js"></script>
 <script src="./account-cloud-restore-page.js"></script>
 <script src="./account-cloud-page.js"></script>
 <script src="./course-nav.js" defer></script>
