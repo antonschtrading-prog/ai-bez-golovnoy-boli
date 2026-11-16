@@ -32,7 +32,7 @@
   if(!storage||!validAccount(accountId)||!locks||typeof locks.request!=='function'||
    typeof uuid!=='function'||typeof hasPending!=='function')throw Error('Verified account and cross-tab lock required');
   let proposal=null;
-  const lock=fn=>locks.request('course-cloud-restore:'+accountId,{mode:'exclusive'},fn);
+  const lock=fn=>locks.request('course-sync-account:'+accountId,{mode:'exclusive'},fn);
   const before=()=>Object.fromEntries(root.CourseSyncModel.KEYS.map(key=>[key,storage.getItem(key)]));
   function guard(){if(hasPending())throw Error('Resolve pending cloud upload before importing backup')}
   async function inspect(raw){
