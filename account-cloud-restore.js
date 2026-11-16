@@ -12,7 +12,7 @@
   if(!root.CourseStorage||typeof root.CourseStorage.write!=='function'||typeof root.CourseStorage.rollbackBatch!=='function')
    throw Error('Safe local version storage unavailable');
   let draft=null;
-  const lockName='course-cloud-restore:'+accountId;
+  const lockName='course-sync-account:'+accountId;
   const withLock=fn=>locks.request(lockName,{mode:'exclusive'},fn);
   function rawState(){
    const state={};
