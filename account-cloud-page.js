@@ -29,6 +29,24 @@
    status(message,true);writeStatus(message+' Повторное сравнение обязательно.',true);
   }finally{busy=false;controls()}
  }
+ function activateSession(){
+  if(!client||!client.isSignedIn()||!client.account())throw Error('Verified account required');
+  // Same setup for both Telegram Mini App and ordinary browser OIDC sign-ins.
+  root.CourseAccountQueuePage.setClient(client);
+  root.CourseAccountRestorePage.setClient(client);
+  root.CourseAccountBackupsPage.setClient(client);
+  root.CourseFileRecoveryPage.setClient(client);
+  writer=root.CourseSyncCommit.create({storage:root.localStorage,client,uuid:()=>root.crypto.randomUUID()});
+ }
+ function deactivateSession(){
+  discardProposal();clearBrowserAttempt();
+  root.CourseAccountQueuePage.forget();
+  root.CourseAccountRestorePage.clear();
+  root.CourseAccountBackupsPage.reset();
+  root.CourseFileRecoveryPage.clear();
+  root.CourseAccountPreviewPage.reset();
+  writer=null;
+ }
  function telegramData(){
   return root.Telegram&&root.Telegram.WebApp&&root.Telegram.WebApp.initData||'';
  }
@@ -53,11 +71,7 @@
    client=root.CourseCloudAccount.create({baseURL,fetchImpl:root.fetch.bind(root),initData:telegramData()});
    discardProposal();clearBrowserAttempt();
    await client.login();
-   root.CourseAccountQueuePage.setClient(client);
-   root.CourseAccountRestorePage.setClient(client);
-   root.CourseAccountBackupsPage.setClient(client);
-   root.CourseFileRecoveryPage.setClient(client);
-   writer=root.CourseSyncCommit.create({storage:root.localStorage,client,uuid:()=>root.crypto.randomUUID()});
+   activateSession();
    status('Вход выполнен. Нажми «Получить облачную копию» для чтения данных.');
   }));
   $('cloudRead').addEventListener('click',()=>run(async()=>{
@@ -67,9 +81,10 @@
    status('Облачная копия проверена. Для сравнения нажми «Сравнить две копии» ниже.');
   }));
   $('cloudLogout').addEventListener('click',()=>run(async()=>{
-   discardProposal();clearBrowserAttempt();root.CourseAccountQueuePage.forget();root.CourseAccountRestorePage.clear();root.CourseAccountBackupsPage.reset();root.CourseFileRecoveryPage.clear();
-   try{await client.logout();status('Выход выполнен. Локальный прогресс не изменён.')}
-   finally{root.CourseAccountPreviewPage.reset()}
+   const previous=client;
+   deactivateSession();
+   try{await previous.logout();status('Выход выполнен. Локальный прогресс не изменён.')}
+   finally{previous.clear();client=null}
   }));
   async function loadBrowserLoginSdk(){
    if(root.Telegram&&root.Telegram.Login&&typeof root.Telegram.Login.auth==='function')return;
@@ -111,8 +126,7 @@
     }catch(e){finish(e)}
    });
    await client.browserComplete(idToken,nonce);
-   root.CourseAccountQueuePage.setClient(client);
-   writer=root.CourseSyncCommit.create({storage:root.localStorage,client,uuid:()=>root.crypto.randomUUID()});
+   activateSession();
    status('Вход через браузер выполнен. Теперь можно прочитать облачную копию.');
   }));
   $('cloudConfirmed').addEventListener('change',controls);
@@ -147,7 +161,7 @@
    root.CourseAccountPreviewPage.reset();
    writeStatus('Облачная копия сохранена, ревизия '+result.revision+'. Локальный прогресс не изменён.');
   }));
-  root.addEventListener('pagehide',()=>{discardProposal();clearBrowserAttempt();root.CourseAccountQueuePage.forget();root.CourseAccountRestorePage.clear();if(client)client.clear()},{once:true});
+  root.addEventListener('pagehide',()=>{deactivateSession();if(client)client.clear();client=null},{once:true});
   controls();
  }catch(error){status('Облачный вход недоступен: '+error.message,true);controls()}
 })(typeof window!=='undefined'?window:globalThis);
