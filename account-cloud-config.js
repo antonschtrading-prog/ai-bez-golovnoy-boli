@@ -1,5 +1,5 @@
 /* Public configuration only. Never put secrets here.
- * Set apiBaseURL to the actual Cloudflare Worker HTTPS ORIGIN after deployment.
- * Disabled by default; no requests are sent until the user signs in.
+ * Existing production Cloudflare Worker HTTPS origin.
+ * Requests are sent only after an explicit sign-in action.
  */
-window.CourseCloudConfig=Object.freeze({apiBaseURL:null,telegramClientId:null});
+window.CourseCloudConfig=Object.freeze({apiBaseURL:'https://ai-course-progress.antonschtrading.workers.dev',telegramClientId:null});
