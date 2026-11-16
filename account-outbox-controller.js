@@ -10,7 +10,7 @@
    throw Error('Account-scoped storage, secure lock and client required');
   if(typeof accountId!=='string'||!/^tg_[A-Za-z0-9_-]{8,125}$/.test(accountId))throw Error('Verified Telegram account required');
   const queue=root.CourseOutbox.create({storage,accountId,randomUUID});
-  const lockName='course-sync-outbox:'+accountId;
+  const lockName='course-sync-account:'+accountId;
   let proposal=null;
   const locked=callback=>locks.request(lockName,{mode:'exclusive'},callback);
   async function inspect(){
