@@ -12,7 +12,7 @@ function environment({login,tick,fetchImpl}={}){
  const root={document:{getElementById:id=>({status,course:frame,retry})[id]},
   window:null,CourseAccountPreview:{local:()=>({sections:{}})},localStorage,
   CourseSyncModel:{KEYS:[]},CourseStorage:{write(){},rollbackBatch(){}},
-  CourseAutoSync:{create:()=>({tick:tick||async()=>({status:'saved'}),stop(){}})},
+  CourseAutoSync:{create:()=>({tick:tick||(async()=>({status:'saved'})),stop(){}})},
   CourseCloudConfig:{apiBaseURL:'https://api.example'},
   CourseCloudAccount:{create:options=>{account.login=login||(()=>options.fetchImpl('https://api.example/v1/auth/telegram'));return account},borrow:a=>a},
   fetch:fetchImpl||(()=>Promise.resolve({ok:true})),
