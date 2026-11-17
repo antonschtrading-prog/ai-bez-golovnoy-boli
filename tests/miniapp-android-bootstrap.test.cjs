@@ -8,7 +8,7 @@ function environment({login,tick,fetchImpl}={}){
  let poll;
  const data=new Map();
  const localStorage={getItem:key=>data.has(key)?data.get(key):null,setItem:(key,value)=>data.set(key,value),removeItem:key=>data.delete(key)};
- const account={isSignedIn:()=>true,account:()=> 'tg_test123456789',login:login||async()=>({accountId:'tg_test123456789'}),clear:()=>{}};
+ const account={isSignedIn:()=>true,account:()=> 'tg_test123456789',login:login||(async()=>({accountId:'tg_test123456789'})),clear:()=>{}};
  const root={document:{getElementById:id=>({status,course:frame,retry})[id]},
   window:null,CourseAccountPreview:{local:()=>({sections:{}})},localStorage,
   CourseSyncModel:{KEYS:[]},CourseStorage:{write(){},rollbackBatch(){}},
