@@ -40,7 +40,7 @@ test('Initial transient sync result retries before iframe mount instead of leavi
  assert.match(e.status.textContent,/Повторяем подключение/);
  assert.equal(typeof e.getPoll(),'function','Bootstrap must schedule retries before mount');
  await e.getPoll();await flush();
- assert.equal(e.frame.hidden,false);
+ assert.equal(e.frame.hidden,false,JSON.stringify({calls,status:e.status.textContent,frame:e.frame}));
  assert.match(e.frame.src,/index\.html/);
  assert.match(e.status.textContent,/Сохранено в облаке/);
 });
