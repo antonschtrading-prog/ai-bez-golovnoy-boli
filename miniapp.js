@@ -19,9 +19,11 @@
   const result=await engine.tick();
   if(result.status==='saved')status.textContent='Сохранено в облаке · '+new Date().toLocaleTimeString();
   else if(result.status==='conflicts')status.textContent='Разные правки одного ответа. Обе копии сохранены; требуется сравнение.';
- }catch(e){status.textContent=navigator.onLine?e.message:'Нет сети. Ответы сохранены на устройстве; отправим после подключения.'}}
+  return result.status==='saved';
+ }catch(e){status.textContent=navigator.onLine?e.message:'Нет сети. Ответы сохранены на устройстве; отправим после подключения.';return false}}
+ function mount(){if(!frame.hidden)return;frame.src='./index.html';frame.hidden=false;timer=setInterval(sync,3000)}
  async function start(){try{
-  if(engine){await sync();return}
+  if(engine){if(await sync())mount();return}
   const data=window.Telegram?.WebApp?.initData;
   if(!data)throw Error('Открой курс кнопкой внутри Telegram-бота.');
   client=CourseCloudAccount.create({baseURL:CourseCloudConfig.apiBaseURL,fetchImpl:fetch.bind(window),initData:data});
@@ -31,7 +33,7 @@
   localStorage.setItem('ai-course-auto-owner',client.account());
   const key='ai-course-auto-base:'+client.account();
   engine=CourseAutoSync.create({client,readLocal:local,writeLocal:write,loadBase:()=>JSON.parse(localStorage.getItem(key)||'null'),saveBase:x=>localStorage.setItem(key,JSON.stringify(x)),uuid:()=>crypto.randomUUID()});
-  await sync();frame.src='./index.html';frame.hidden=false;timer=setInterval(sync,3000);
+  if(await sync())mount();
  }catch(e){status.textContent=e.message+' Закрой и заново открой Mini App.'}}
  document.getElementById('retry').onclick=start;window.addEventListener('online',()=>engine&&sync());
  window.addEventListener('pagehide',()=>{clearInterval(timer);engine?.stop();client?.clear()});await start();
