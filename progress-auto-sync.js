@@ -5,8 +5,10 @@ function create({client,readLocal,writeLocal,loadBase,saveBase,uuid}){
   if(busy||stopped)return {status:'busy'};busy=true;
   try{
    const local=readLocal(),remote=await client.read(),base=loadBase()||{};
+   if(stopped)return {status:'stopped'};
    const plan=root.CourseAutoMerge.merge(base,local,remote.sections);
    if(plan.status!=='ready')return plan;
+   if(stopped)return {status:'stopped'};
    if(JSON.stringify(readLocal())!==JSON.stringify(local))return {status:'changed'};
    let revision=remote.revision;
    if(JSON.stringify(plan.proposed)!==JSON.stringify(remote.sections)){
@@ -16,6 +18,7 @@ function create({client,readLocal,writeLocal,loadBase,saveBase,uuid}){
     revision=result.revision;
    }
    // Keep the original baseline if a user typed while the request was in flight.
+   if(stopped)return {status:'stopped'};
    if(JSON.stringify(readLocal())!==JSON.stringify(local))return {status:'changed'};
    writeLocal(plan.proposed,local);saveBase(plan.proposed);
    return {status:'saved',revision};
