@@ -21,7 +21,7 @@
   else if(result.status==='conflicts')status.textContent='Разные правки одного ответа. Обе копии сохранены; требуется сравнение.';
   return result.status==='saved';
  }catch(e){status.textContent=navigator.onLine?e.message:'Нет сети. Ответы сохранены на устройстве; отправим после подключения.';return false}}
- function mount(){if(!frame.hidden)return;frame.src='./index.html';frame.hidden=false;timer=setInterval(sync,3000)}
+ function mount(){if(!frame.hidden)return;frame.src='./index.html?v=20261117-session2';frame.hidden=false;timer=setInterval(sync,3000)}
  async function start(){try{
   if(engine){if(await sync())mount();return}
   const data=window.Telegram?.WebApp?.initData;
