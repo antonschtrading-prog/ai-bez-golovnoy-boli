@@ -6,3 +6,6 @@ function fixture(){let local={draft:'first'},base={},remote={revision:0,sections
 test('draft persists, unchanged polling does not create revisions',async()=>{const f=fixture();await f.engine.tick();await f.engine.tick();assert.equal(f.saves(),1);assert.equal(f.remote().sections.draft,'first')});
 test('offline edits survive and are sent on retry',async()=>{const f=fixture();f.offline(true);await assert.rejects(f.engine.tick());f.offline(false);await f.engine.tick();assert.equal(f.remote().sections.draft,'first')});
 test('two writers editing same answer cannot overwrite each other',async()=>{const f=fixture();await f.engine.tick();f.edit({draft:'local'});f.other({draft:'remote'});assert.equal((await f.engine.tick()).status,'conflicts');assert.equal(f.remote().sections.draft,'remote')});
+
+test('missing local section never deletes cloud progress automatically',async()=>{const f=fixture();await f.engine.tick();f.edit({});assert.equal((await f.engine.tick()).status,'conflicts');assert.equal(f.remote().sections.draft,'first')});
+test('stopped engine does not send data',async()=>{const f=fixture();f.engine.stop();await f.engine.tick();assert.equal(f.saves(),0)});
