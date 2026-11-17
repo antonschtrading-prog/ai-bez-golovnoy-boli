@@ -67,12 +67,16 @@
   enabled=true;
   status('Для входа открой эту страницу внутри Telegram Mini App и нажми кнопку. Данные уроков не отправляются.');
   $('cloudLogin').addEventListener('click',()=>run(async()=>{
-   await loadTelegramSdk();
-   client=root.CourseCloudAccount.create({baseURL,fetchImpl:root.fetch.bind(root),initData:telegramData()});
+   let shared=null;
+   // Only the same-origin embedding shell can supply an existing session.
+   try{if(root.parent&&root.parent!==root&&root.parent.location.origin===root.location.origin)
+    shared=root.parent.CourseMiniAppAccount?.()}catch(_){}
+   if(shared)client=shared;
+   else{await loadTelegramSdk();client=root.CourseCloudAccount.create({baseURL,fetchImpl:root.fetch.bind(root),initData:telegramData()})}
    discardProposal();clearBrowserAttempt();
    await client.login();
    activateSession();
-   status('Вход выполнен. Нажми «Получить облачную копию» для чтения данных.');
+   status(shared?'Используется сессия курса. Нажми «Получить облачную копию». Выход здесь отключает только ручное сравнение.':'Вход выполнен. Нажми «Получить облачную копию» для чтения данных.');
   }));
   $('cloudRead').addEventListener('click',()=>run(async()=>{
    discardProposal();

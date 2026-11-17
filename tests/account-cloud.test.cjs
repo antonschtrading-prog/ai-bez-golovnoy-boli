@@ -57,3 +57,18 @@ test('logout clears memory even when remote revoke fails',async()=>{
  await api.login();await assert.rejects(api.logout(),/offline/);
  assert.equal(api.isSignedIn(),false);
 });
+
+
+test('borrowed Mini App session reuses login and detaches without revoking autosave',async()=>{
+ let active=true,logins=0,revoked=0;
+ const source={isSignedIn:()=>active,account:()=> 'tg_testaccount123',login:async()=>{logins++},
+  read:async()=>({revision:1,sections:{}}),save:async()=>({revision:2}),logout:async()=>{revoked++;active=false}};
+ const view=setup(async()=>{throw Error("No authentication request expected")}).borrow(source);
+ await assert.rejects(view.read(),/Sign in first/);
+ await view.login();assert.equal(view.account(),'tg_testaccount123');assert.equal((await view.read()).revision,1);
+ assert.equal((await view.save({},1,'operation123')).revision,2);assert.equal(logins,0);
+ await view.logout();view.clear();assert.equal(revoked,0);assert.equal(source.isSignedIn(),true);
+ await assert.rejects(view.read(),/Sign in first/);
+ await view.login();active=false;assert.equal(view.isSignedIn(),false);assert.equal(view.account(),null);
+ await assert.rejects(view.save(),/Sign in first/);
+});

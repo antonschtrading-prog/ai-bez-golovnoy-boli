@@ -33,6 +33,7 @@
   localStorage.setItem('ai-course-auto-owner',client.account());
   const key='ai-course-auto-base:'+client.account();
   engine=CourseAutoSync.create({client,readLocal:local,writeLocal:write,loadBase:()=>JSON.parse(localStorage.getItem(key)||'null'),saveBase:x=>localStorage.setItem(key,JSON.stringify(x)),uuid:()=>crypto.randomUUID()});
+  window.CourseMiniAppAccount=()=>client?.isSignedIn()?CourseCloudAccount.borrow(client):null;
   if(await sync())mount();
  }catch(e){status.textContent=e.message+' Закрой и заново открой Mini App.'}}
  document.getElementById('retry').onclick=start;window.addEventListener('online',()=>engine&&sync());

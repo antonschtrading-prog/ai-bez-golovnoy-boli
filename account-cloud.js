@@ -64,5 +64,18 @@
   function clear(){token=null;accountId=null}
   return Object.freeze({login,browserChallenge,browserComplete,read,save,logout,clear,isSignedIn:()=>!!token,account:()=>accountId});
  }
- root.CourseCloudAccount=Object.freeze({create});
+ // A same-origin child may borrow the shell session without seeing its token.
+ // Signing out of the manual tools detaches only that view, not autosaving.
+ function borrow(source){
+  let attached=false;
+  function requireSession(){if(!attached||!source.isSignedIn())throw Error('Sign in first')}
+  return Object.freeze({
+   async login(){if(!source.isSignedIn())throw Error('Mini App session expired');attached=true;return {accountId:source.account()}},
+   async read(){requireSession();return source.read()},
+   async save(...args){requireSession();return source.save(...args)},
+   async logout(){attached=false},clear(){attached=false},
+   isSignedIn:()=>attached&&source.isSignedIn(),account:()=>attached&&source.isSignedIn()?source.account():null
+  });
+ }
+ root.CourseCloudAccount=Object.freeze({create,borrow});
 })(typeof window!=='undefined'?window:globalThis);
