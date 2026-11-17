@@ -6,6 +6,7 @@ function create({client,readLocal,writeLocal,loadBase,saveBase,uuid}){
   try{
    const local=readLocal(),remote=await client.read(),base=loadBase()||{};
    if(stopped)return {status:'stopped'};
+   if(Object.keys(base).some(k=>!Object.hasOwn(local,k)||!Object.hasOwn(remote.sections,k)))return {status:'conflicts',conflicts:['removed-section']};
    const plan=root.CourseAutoMerge.merge(base,local,remote.sections);
    if(plan.status!=='ready')return plan;
    if(stopped)return {status:'stopped'};
