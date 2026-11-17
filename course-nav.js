@@ -25,7 +25,7 @@ const holder=document.createElement('div');holder.className='course-shortcuts';
 const details=document.createElement('details');
 const summary=document.createElement('summary');summary.textContent='Разделы курса · '+(pages.find(x=>x[0]===current)?.[1]||'Навигация');
 const nav=document.createElement('nav');nav.setAttribute('aria-label','Навигация по курсу');
-for(const [page,title] of pages){const a=document.createElement('a');a.href='./'+page;a.textContent=title;if(page===current)a.setAttribute('aria-current','page');nav.append(a)}
+for(const [page,title] of pages){const a=document.createElement('a');a.href='./'+page+(page==='account.html'?'?v=20261117-session2':'');a.textContent=title;if(page===current)a.setAttribute('aria-current','page');nav.append(a)}
 details.append(summary,nav);holder.append(details);
 document.body.prepend(holder);
 })();
