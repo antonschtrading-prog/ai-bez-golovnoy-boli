@@ -27,7 +27,7 @@ function environment({login,tick,fetchImpl}={}){
 }
 test('Android hanging network request displays timeout, does not silently remain on loading screen',async()=>{
  const e=environment({fetchImpl:()=>new Promise(()=>{})});
- e.run();await flush();
+ await e.run();await flush();
  assert.match(e.status.textContent,/Превышено время ответа сервера/);
  assert.equal(e.retry.disabled,false);
  assert.equal(e.frame.hidden,true,'Do not expose lessons until safe initial sync');
@@ -35,7 +35,7 @@ test('Android hanging network request displays timeout, does not silently remain
 test('Initial transient sync result retries before iframe mount instead of leaving a blank Mini App',async()=>{
  let calls=0;
  const e=environment({login:async()=>({accountId:'tg_test123456789'}),tick:async()=>({status:++calls===1?'changed':'saved'})});
- e.run();await flush();
+ await e.run();await flush();
  assert.equal(e.frame.hidden,true);
  assert.match(e.status.textContent,/Повторяем подключение/);
  assert.equal(typeof e.getPoll(),'function','Bootstrap must schedule retries before mount');
@@ -46,7 +46,7 @@ test('Initial transient sync result retries before iframe mount instead of leavi
 });
 test('API rejection shows recoverable error and leaves retry enabled',async()=>{
  const e=environment({login:async()=>{throw Error('invalid_telegram_identity')}});
- e.run();await flush();
+ await e.run();await flush();
  assert.match(e.status.textContent,/invalid_telegram_identity/);
  assert.equal(e.retry.disabled,false);
  assert.equal(e.frame.hidden,true);
