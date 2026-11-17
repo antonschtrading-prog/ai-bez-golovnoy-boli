@@ -242,6 +242,7 @@ const http=require('node:http'),fs=require('node:fs'),path=require('node:path'),
   name:'backup.json',mimeType:'application/json',buffer:Buffer.from(fileBackup)
  });
  await page.locator('#fileRecoveryInspect').click();
+ await page.locator('#fileRecoveryApproval').waitFor({state:'visible'});
  assert(await page.locator('#fileRecoveryApproval').isVisible());
  assert.equal(await page.locator('#fileRecoveryApply').isDisabled(),true);
  await page.locator('#fileRecoveryConsent').check();
