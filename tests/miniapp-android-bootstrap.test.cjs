@@ -32,14 +32,14 @@ test('Android hanging network request displays timeout, does not silently remain
  assert.equal(e.retry.disabled,false);
  assert.equal(e.frame.hidden,true,'Do not expose lessons until safe initial sync');
 });
-test('Initial transient sync result retries before iframe mount instead of leaving a blank Mini App',async()=>{
+test('Initial transient sync result schedules background retries and manual retry opens course safely',async()=>{
  let calls=0;
  const e=environment({login:async()=>({accountId:'tg_test123456789'}),tick:async()=>({status:++calls===1?'changed':'saved'})});
  await e.run();await flush();
  assert.equal(e.frame.hidden,true);
  assert.match(e.status.textContent,/Повторяем подключение/);
  assert.equal(typeof e.getPoll(),'function','Bootstrap must schedule retries before mount');
- await e.getPoll();await flush();
+ await e.retry.onclick();await flush();
  assert.equal(e.frame.hidden,false,JSON.stringify({calls,status:e.status.textContent,frame:e.frame}));
  assert.match(e.frame.src,/index\.html/);
  assert.match(e.status.textContent,/Сохранено в облаке/);
