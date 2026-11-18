@@ -28,7 +28,7 @@ async function bodyJSON(request){
   return JSON.parse(new TextDecoder('utf-8',{fatal:true,ignoreBOM:false}).decode(bytes));
  }catch(e){if(e.status)throw e;throw Object.assign(Error('invalid_json'),{status:400})}
 }
-export function createHandler({db,origins=[],botToken=null,oidcClientId=null,jwksFetch=fetch,reviewProvider=null,reviewLimiter=null,reviewBudget=null}){
+export function createHandler({db,origins=[],botToken=null,oidcClientId=null,jwksFetch=fetch,reviewProvider=null,reviewLimiter=null,reviewBudget=null,reviewStatus=null}){
  const store=createD1Store(db);
  const allow=new Set(origins);
  return async(request)=>{
@@ -89,6 +89,22 @@ export function createHandler({db,origins=[],botToken=null,oidcClientId=null,jwk
    if(!token)return answer(401,{error:'unauthorized'});
    const account=await store.authenticate(token);
    if(!account)return answer(401,{error:'unauthorized'});
+   if(path==='/v1/review/status'&&request.method==='GET'){
+    // No inference calls or D1 writes, no visibility into other learners' quotas.
+    // Always require authenticated account and exact allowed origin.
+    if(!origin||!allow.has(origin))return answer(403,{error:'origin_required'});
+    if(typeof reviewStatus!=='function')return answer(200,{enabled:false,reason:'review_not_configured'});
+    try{
+     const status=await reviewStatus(account);
+     if(!status||typeof status!=='object'||!Number.isSafeInteger(status.globalRemaining)||
+      !Number.isSafeInteger(status.accountRemaining)||status.globalRemaining<0||status.accountRemaining<0||
+      typeof status.day!=='string'||!/^\\d{4}-\\d\\d-\\d\\d$/.test(status.day))
+      return answer(503,{error:'review_budget_unavailable'});
+     return answer(200,{enabled:status.globalRemaining>0&&status.accountRemaining>0,
+      reason:status.globalRemaining>0&&status.accountRemaining>0?null:'review_daily_free_quota_exhausted',
+      day:status.day,globalRemaining:status.globalRemaining,accountRemaining:status.accountRemaining});
+    }catch(_){return answer(503,{error:'review_budget_unavailable'})}
+   }
    if(path==='/v1/review'&&request.method==='POST'){
     // Fail closed unless BOTH the model and a bounded per-account limiter are configured.
     if(!reviewProvider||typeof reviewLimiter!=='function'||typeof reviewBudget!=='function')return answer(503,{error:'review_not_configured'});
