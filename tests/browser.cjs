@@ -144,6 +144,7 @@ const http=require('node:http'),fs=require('node:fs'),path=require('node:path'),
  assert.match(await page.locator('#main').innerText(),/Три ситуации из практики/);
  // A wrong or missing answer cannot unlock the practical assignment.
  assert.equal(await page.locator('[data-next="practice"]').isDisabled(),true);
+ assert.equal(await page.locator('#markDone').isDisabled(),true);
  await page.locator('[data-answer="0:0"]').click();
  assert.equal(await page.locator('[data-next="practice"]').isDisabled(),true);
  let position=await page.locator('#main').evaluate(el=>el.getBoundingClientRect().top);
@@ -152,6 +153,7 @@ const http=require('node:http'),fs=require('node:fs'),path=require('node:path'),
   await page.locator('[data-answer="'+question+':'+answer+'"]').click();
  }
  assert.equal(await page.locator('[data-next="practice"]').isEnabled(),true);
+ assert.equal(await page.locator('#markDone').isEnabled(),true);
  await page.locator('[data-next="practice"]').click();
  assert.match(await page.locator('#main').innerText(),/Поставь задачу в незнакомой области/);
  position=await page.locator('#main').evaluate(el=>el.getBoundingClientRect().top);
@@ -168,11 +170,13 @@ const http=require('node:http'),fs=require('node:fs'),path=require('node:path'),
  assert.match(await page.locator('#pct').innerText(),/^0\/\d+$/);
  assert.match(await page.locator('aside.panel').innerText(),/Завершено занятий/);
  await page.locator('#evaluate').click();
- assert.equal(await page.locator('#markDone').count(),0,'Incomplete report cannot be completed');
- for(const field of ['result','verification','reflection'])
-  await page.locator('[data-field="'+field+'"]').fill('Подробное обоснование и проверка работы для проверки заполнения');
- await page.locator('#evaluate').click();
- assert.equal(await page.locator('#markDone').count(),1,'Complete report should offer manual completion');
+ assert.match(await page.locator('#evaluation').innerText(),/Заполнено по желанию: 1\/4/);
+ assert.equal(await page.locator('#markDone').count(),0,'Optional notes cannot mark a lesson completed');
+ assert.equal(await page.locator('#reportFile').isVisible(),false,'File upload must remain behind optional details');
+ assert.match(await page.locator('#evaluation').innerText(),/не оценка качества/);
+ await page.locator('[data-go="lesson"]').click();
+ await page.locator('[data-next="quiz"]').click();
+ assert.equal(await page.locator('#markDone').isEnabled(),true,'Verified quiz unlocks completion independently of the report');
  await page.locator('#markDone').click();
  assert.match(await page.locator('#pct').innerText(),/^1\/\d+$/);
  // A1 completion increments the shared lesson counter; never display 100% of the course.
