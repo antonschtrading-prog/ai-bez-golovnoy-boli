@@ -1,0 +1,64 @@
+name: Existing Cloudflare Worker — free-only release
+on:
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: "Inspect configuration (read only) or deploy the existing Worker with AI disabled"
+        required: true
+        default: inspect
+        type: choice
+        options:
+          - inspect
+          - deploy-disabled-ai
+
+permissions:
+  contents: read
+
+concurrency:
+  group: existing-cloudflare-worker-release
+  cancel-in-progress: false
+
+jobs:
+  safe-release:
+    name: Check and optionally update existing Worker
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_D1_DATABASE_ID: ${{ secrets.CLOUDFLARE_D1_DATABASE_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Require scoped existing Cloudflare account credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN" || { echo "Missing CLOUDFLARE_API_TOKEN"; exit 1; }
+          test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo "Missing CLOUDFLARE_ACCOUNT_ID"; exit 1; }
+          test -n "$CLOUDFLARE_D1_DATABASE_ID" || { echo "Missing CLOUDFLARE_D1_DATABASE_ID"; exit 1; }
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Unit, security and release configuration tests
+        run: npm test
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Browser integration tests
+        run: npm run test:browser
+      - name: Generate temporary config for existing resources
+        run: node cloudflare/free-release-config.mjs
+      - name: Validate Worker build without deploying
+        run: npx --yes wrangler@4 deploy --dry-run
+      - name: Inspect unapplied D1 migrations (no writes)
+        if: inputs.operation == 'inspect'
+        run: npx --yes wrangler@4 d1 migrations list ai-course-progress --remote
+      - name: Deploy to existing ai-course-progress (review always disabled)
+        if: inputs.operation == 'deploy-disabled-ai'
+        run: npx --yes wrangler@4 deploy
+      - name: Remove temporary release config
+        if: always()
+        run: rm -f wrangler.toml
