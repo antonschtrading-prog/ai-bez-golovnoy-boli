@@ -28,7 +28,7 @@ async function bodyJSON(request){
   return JSON.parse(new TextDecoder('utf-8',{fatal:true,ignoreBOM:false}).decode(bytes));
  }catch(e){if(e.status)throw e;throw Object.assign(Error('invalid_json'),{status:400})}
 }
-export function createHandler({db,origins=[],botToken=null,oidcClientId=null,jwksFetch=fetch,reviewProvider=null,reviewLimiter=null}){
+export function createHandler({db,origins=[],botToken=null,oidcClientId=null,jwksFetch=fetch,reviewProvider=null,reviewLimiter=null,reviewBudget=null}){
  const store=createD1Store(db);
  const allow=new Set(origins);
  return async(request)=>{
@@ -91,7 +91,7 @@ export function createHandler({db,origins=[],botToken=null,oidcClientId=null,jwk
    if(!account)return answer(401,{error:'unauthorized'});
    if(path==='/v1/review'&&request.method==='POST'){
     // Fail closed unless BOTH the model and a bounded per-account limiter are configured.
-    if(!reviewProvider||typeof reviewLimiter!=='function')return answer(503,{error:'review_not_configured'});
+    if(!reviewProvider||typeof reviewLimiter!=='function'||typeof reviewBudget!=='function')return answer(503,{error:'review_not_configured'});
     if(!origin||!allow.has(origin))return answer(403,{error:'origin_required'});
     if(!/^application\/json(?:;|$)/i.test(request.headers.get('content-type')||''))return answer(415,{error:'json_required'});
     let input;
@@ -100,6 +100,12 @@ export function createHandler({db,origins=[],botToken=null,oidcClientId=null,jwk
     let permitted=false;
     try{permitted=await reviewLimiter(account)}catch(_){return answer(503,{error:'review_limiter_unavailable'})}
     if(!permitted)return answer(429,{error:'review_limit_reached'});
+    // D1 performs a global, atomic, durable UTC daily reservation before AI.run.
+    // No reserve on denied auth, origin, malformed input or short-term limit.
+    let slot;
+    try{slot=await reviewBudget(account)}
+    catch(_){return answer(503,{error:'review_budget_unavailable'})}
+    if(!slot?.ok)return answer(429,{error:'review_daily_free_quota_exhausted'});
     try{
      const review=await reviewProvider(input);
      // The server MUST validate the model output; never trust an unverified provider response.
