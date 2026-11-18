@@ -13,10 +13,10 @@ export function renderFreeReleaseConfig(template,{databaseId,rateNamespace='8142
     typeof rateNamespace!=='string'||!RATE_NAMESPACE.test(rateNamespace))throw Error('invalid_release_configuration');
  const placeholder='database_id = "REPLACE_WITH_REAL_D1_DATABASE_ID"';
  if(template.split(placeholder).length!==2)throw Error('unexpected_d1_template');
- if(!template.includes('name = "ai-course-progress"')||
-    !template.includes('main = "cloudflare/worker.mjs"')||
-    !template.includes('binding = "DB"')||
-    !template.includes('database_name = "ai-course-progress"')||
+ if(!/^name = "ai-course-progress"$/m.test(template)||
+    !/^main = "cloudflare\/worker\.mjs"$/m.test(template)||
+    !/^binding = "DB"$/m.test(template)||
+    !/^database_name = "ai-course-progress"$/m.test(template)||
     !template.includes('COURSE_ORIGINS = "https://antonschtrading-prog.github.io"'))throw Error('release_must_use_existing_resources');
  const rendered='keep_vars = true\n'+template.replace(placeholder,'database_id = "'+databaseId+'"');
  const aiConfig=`
