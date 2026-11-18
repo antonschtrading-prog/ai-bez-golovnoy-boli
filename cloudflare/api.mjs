@@ -4,6 +4,7 @@
 import {createD1Store} from './d1-store.mjs';
 import {verifyTelegramMiniApp} from './telegram-auth.mjs';
 import {verifyTelegramOidc} from './telegram-oidc.mjs';
+import {validateRequest,reviewWithModel} from './ai-review.mjs';
 const MAX=1024*1024;
 const send=(code,data,extra={})=>new Response(JSON.stringify(data),{status:code,headers:{
  'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store',
@@ -27,7 +28,7 @@ async function bodyJSON(request){
   return JSON.parse(new TextDecoder('utf-8',{fatal:true,ignoreBOM:false}).decode(bytes));
  }catch(e){if(e.status)throw e;throw Object.assign(Error('invalid_json'),{status:400})}
 }
-export function createHandler({db,origins=[],botToken=null,oidcClientId=null,jwksFetch=fetch}){
+export function createHandler({db,origins=[],botToken=null,oidcClientId=null,jwksFetch=fetch,reviewProvider=null,reviewLimiter=null}){
  const store=createD1Store(db);
  const allow=new Set(origins);
  return async(request)=>{
@@ -88,6 +89,24 @@ export function createHandler({db,origins=[],botToken=null,oidcClientId=null,jwk
    if(!token)return answer(401,{error:'unauthorized'});
    const account=await store.authenticate(token);
    if(!account)return answer(401,{error:'unauthorized'});
+   if(path==='/v1/review'&&request.method==='POST'){
+    // Fail closed unless BOTH the model and a bounded per-account limiter are configured.
+    if(!reviewProvider||typeof reviewLimiter!=='function')return answer(503,{error:'review_not_configured'});
+    if(!origin||!allow.has(origin))return answer(403,{error:'origin_required'});
+    if(!/^application\/json(?:;|$)/i.test(request.headers.get('content-type')||''))return answer(415,{error:'json_required'});
+    let input;
+    try{input=validateRequest(await bodyJSON(request))}
+    catch(e){return answer(e.status===413?413:422,{error:e.status===413?'body_too_large':'invalid_review_input'})}
+    let permitted=false;
+    try{permitted=await reviewLimiter(account)}catch(_){return answer(503,{error:'review_limiter_unavailable'})}
+    if(!permitted)return answer(429,{error:'review_limit_reached'});
+    try{
+     const review=await reviewProvider(input);
+     // The server MUST validate the model output; never trust an unverified provider response.
+     const safe=globalThis.CourseRubricReview.parse(JSON.stringify({schema:'course-rubric-review-v1',items:review?.items}),{work:input.work,criteria:input.criteria});
+     return answer(200,{review:safe});
+    }catch(_){return answer(502,{error:'review_unavailable'})}
+   }
    if(path==='/v1/session'&&request.method==='GET')return answer(200,{accountId:account,authenticated:true});
    if(path==='/v1/session'&&request.method==='DELETE'){
     await store.revoke(token);
