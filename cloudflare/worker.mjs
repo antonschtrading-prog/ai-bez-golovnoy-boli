@@ -25,8 +25,9 @@ export default {
    return limited?.success===true;
   }):null;
   const reviewBudget=enabled?(account=>budget.reserve(account)):null;
+  const reviewStatus=enabled?(account=>budget.status(account)):null;
   return createHandler({db:env.DB,origins,botToken:env.TELEGRAM_BOT_TOKEN||null,
    oidcClientId:env.TELEGRAM_CLIENT_ID||null,
-   reviewProvider,reviewLimiter,reviewBudget})(request);
+   reviewProvider,reviewLimiter,reviewBudget,reviewStatus})(request);
  }
 };
