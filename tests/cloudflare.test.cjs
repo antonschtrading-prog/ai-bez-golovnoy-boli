@@ -346,3 +346,60 @@ test('review quota status is authenticated, read-only, origin-limited and fail c
  assert.equal((await malformed(new Request('https://example.org/v1/review/status',{
   headers:{Authorization:'Bearer '+fixture.token1,Origin:origin}}))).status,503);
 });
+
+
+test('existing Worker Free-only release gates block model calls without all approvals and reject other models',async t=>{
+ const db=mockD1();t.after(db.close);
+ const {createD1Store}=await import('../cloudflare/d1-store.mjs');
+ const {default:worker}=await import('../cloudflare/worker.mjs');
+ const session=(await createD1Store(db).issueSession('pilot_reader',60000)).token;
+ const origin='https://antonschtrading-prog.github.io';
+ const request=()=>new Request('https://course.example/v1/review',{method:'POST',
+  headers:{Origin:origin,Authorization:'Bearer '+session,'Content-Type':'application/json'},
+  body:JSON.stringify({level:'A1',title:'Практика',task:'Объясни цель',work:'Цель: получить результат.',criteria:['Понятна цель']})});
+ let runs=0,limitCalls=0;
+ const ai={run:async()=>{runs++;return {response:JSON.stringify({schema:'course-rubric-review-v1',
+  items:[{index:0,rating:'met',quote:'Цель: получить результат',reason:'Есть цель',nextStep:'Сверить результат'}]})}}};
+ const limiter={limit:async()=>{limitCalls++;return{success:true}}};
+ const base={DB:db,AI:ai,AI_REVIEW_LIMITER:limiter,COURSE_ORIGINS:origin,
+  AI_REVIEW_ENABLED:'true',AI_REVIEW_CALIBRATED:'true',AI_REVIEW_FREE_PLAN_CONFIRMED:'true',
+  AI_REVIEW_MODEL:'@cf/meta/llama-3.1-8b-instruct-fp8-fast'};
+ for(const changed of [
+  {AI_REVIEW_ENABLED:'false'},{AI_REVIEW_CALIBRATED:'false'},
+  {AI_REVIEW_FREE_PLAN_CONFIRMED:'false'},
+  {AI_REVIEW_MODEL:'@cf/meta/llama-3.3-70b-instruct-fp8-fast'},
+  {AI:null},{AI_REVIEW_LIMITER:null}
+ ]){
+  const response=await worker.fetch(request(),{...base,...changed});
+  assert.equal(response.status,503);
+  assert.equal((await response.json()).error,'review_not_configured');
+ }
+ assert.equal(runs,0);assert.equal(limitCalls,0);
+ const valid=await worker.fetch(request(),base);
+ assert.equal(valid.status,200);assert.equal(runs,1);
+ assert.equal((await valid.json()).review.items[0].rating,'met');
+ const read=await worker.fetch(new Request('https://course.example/v1/review/status',{headers:{Origin:origin,Authorization:'Bearer '+session}}),base);
+ assert.equal(read.status,200);
+ const quota=await read.json();
+ assert.equal(quota.accountRemaining,1);assert.equal(quota.globalRemaining,7);
+ assert.equal(runs,1,'Quota status must not invoke Workers AI');
+});
+test('Worker with missing review migration refuses to call the model even if every flag is true',async t=>{
+ const db=mockD1();t.after(db.close);
+ const {default:worker}=await import('../cloudflare/worker.mjs');
+ const {createD1Store}=await import('../cloudflare/d1-store.mjs');
+ const session=(await createD1Store(db).issueSession('pilot_missing_migration',60000)).token;
+ await db.prepare('DROP TABLE ai_review_daily_budget').run();
+ let runs=0;
+ const env={DB:db,COURSE_ORIGINS:'https://antonschtrading-prog.github.io',
+  AI_REVIEW_ENABLED:'true',AI_REVIEW_CALIBRATED:'true',AI_REVIEW_FREE_PLAN_CONFIRMED:'true',
+  AI_REVIEW_MODEL:'@cf/meta/llama-3.1-8b-instruct-fp8-fast',AI:{run:async()=>{runs++;return{response:'{}'}}},
+  AI_REVIEW_LIMITER:{limit:async()=>({success:true})}};
+ const req=new Request('https://course.example/v1/review',{method:'POST',
+  headers:{Origin:env.COURSE_ORIGINS,Authorization:'Bearer '+session,'Content-Type':'application/json'},
+  body:JSON.stringify({level:'A1',title:'Практика',task:'Объясни цель',work:'Цель: результат',criteria:['Цель']})});
+ const res=await worker.fetch(req,env);
+ assert.equal(res.status,503);
+ assert.equal((await res.json()).error,'review_budget_unavailable');
+ assert.equal(runs,0);
+});
