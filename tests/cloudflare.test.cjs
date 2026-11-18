@@ -229,3 +229,48 @@ test('Cloudflare browser OIDC and Mini App share one verified account, reject re
  const again=await makeRequest('/v1/auth/browser',{idToken:await jwt({...claims,nonce:next.body.nonce}),nonce:next.body.nonce});
  assert.equal(again.status,401);
 });
+
+
+test('AI review endpoint is opt-in, authenticated, origin bound, rate limited, and never alters progress',async t=>{
+ const f=await setup();t.after(f.db.close);
+ const {createHandler}=await import('../cloudflare/api.mjs');
+ const origin='https://antonschtrading-prog.github.io';
+ const input={level:'A1',title:'Работа',task:'Дай цель и проверку',work:'Цель: проверить результат по данным.',criteria:['Цель','Проверка']};
+ const items=[
+  {index:0,rating:'met',quote:'Цель: проверить результат',reason:'Цель указана',nextStep:'Добавить метрику'},
+  {index:1,rating:'not-demonstrated',quote:'',reason:'Нет независимой проверки',nextStep:'Найти источник'}
+ ];
+ let providerCalls=0,limiterCalls=0;
+ let allowed=true,malformed=false;
+ const create=(enabled=true)=>createHandler({db:f.db,origins:[origin],
+  reviewProvider:enabled?async()=>{providerCalls++;return{items:malformed?[{...items[0],quote:'выдуманное'},items[1]]:items}}:null,
+  reviewLimiter:enabled?async(account)=>{limiterCalls++;assert(account==='person_A'||account==='person_B');return allowed}:null});
+ const send=async(handler,token=f.token1,headers={},body=input)=>handler(new Request('https://api.example/v1/review',{
+  method:'POST',headers:{Authorization:'Bearer '+token,Origin:origin,'Content-Type':'application/json',...headers},
+  body:JSON.stringify(body)
+ }));
+ const disabled=await send(create(false));
+ assert.equal(disabled.status,503);assert.equal((await disabled.json()).error,'review_not_configured');
+ const handler=create();
+ assert.equal((await send(handler,'incorrect')).status,401);
+ assert.equal((await send(handler,f.token1,{Origin:'https://evil.example'})).status,403);
+ assert.equal((await send(handler,f.token1,{Origin:'null'})).status,403);
+ assert.equal((await send(handler,f.token1,{'Content-Type':'text/plain'})).status,415);
+ assert.equal((await send(handler,f.token1,{}, {...input,level:'admin'})).status,422);
+ assert.equal(providerCalls,0);assert.equal(limiterCalls,0);
+ allowed=false;
+ assert.equal((await send(handler)).status,429);
+ assert.equal(providerCalls,0);
+ allowed=true;
+ const good=await send(handler);
+ assert.equal(good.status,200);
+ const output=await good.json();
+ assert.equal(output.review.items[0].quote,'Цель: проверить результат');
+ assert.equal(output.review.workSnapshot,input.work);
+ assert.equal(providerCalls,1);
+ assert.equal((await f.req(f.token1)).body.revision,0,'Review must not write to cloud progress');
+ malformed=true;
+ const invalid=await send(handler);
+ assert.equal(invalid.status,502);
+ assert.equal((await invalid.json()).error,'review_unavailable');
+});

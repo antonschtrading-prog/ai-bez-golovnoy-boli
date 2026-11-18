@@ -15,3 +15,20 @@ binding = "DB"
 database_name = "ai-course-progress"
 database_id = "REPLACE_WITH_REAL_D1_DATABASE_ID"
 migrations_dir = "cloudflare/migrations"
+
+# Optional future AI evaluation (off by default). Do NOT activate until
+# billing/quota, model validity, privacy notice and rate limits have been reviewed.
+# [ai]
+# binding = "AI"
+#
+# [[ratelimits]]
+# name = "AI_REVIEW_LIMITER"
+# namespace_id = "1001" # Choose your own unused positive integer
+# [ratelimits.simple]
+# limit = 2
+# period = 60
+#
+# [vars] must then also contain:
+# AI_REVIEW_ENABLED = "true"
+# AI_REVIEW_MODEL = "@cf/SELECT_A_SUPPORTED_TEXT_MODEL"
+# Never put API keys or other secrets in [vars].
