@@ -9,6 +9,32 @@ const http=require('node:http'),fs=require('node:fs'),path=require('node:path'),
  const context=await browser.newContext({viewport:{width:390,height:844},acceptDownloads:true});
  const page=await context.newPage();page.on('pageerror',e=>errors.push(e.message));
  for(const name of fs.readdirSync(root).filter(n=>n.endsWith('.html'))){await page.goto(base+'/'+name);await page.waitForLoadState('load');assert(await page.locator('body').innerText(),name);}
+ // Assessment status must distinguish knowledge from practice without character-count grades.
+ await page.goto(base+'/assessment.html');
+ await page.evaluate(()=>localStorage.clear());
+ await page.reload();
+ await page.locator('#work').fill('Есть цель');
+ await page.locator('#evaluate').click();
+ assert.match(await page.locator('#feedback').innerText(),/Знания: проверка не завершена/);
+ assert.match(await page.locator('#feedback').innerText(),/Практика: нужна доработка/);
+ assert.doesNotMatch(await page.locator('#feedback').innerText(),/120 символов|Формальные условия выполнены/);
+ await page.locator('[data-answer="0:1"]').click();
+ await page.locator('[data-answer="1:1"]').click();
+ await page.locator('[data-answer="2:2"]').click();
+ await page.locator('[data-answer="3:0"]').click();
+ await page.locator('#evaluate').click();
+ assert.match(await page.locator('#feedback').innerText(),/Знания: подтверждены тестом/);
+ await page.goto(base+'/deep-practice.html');
+ await page.evaluate(()=>localStorage.clear());
+ await page.reload();
+ await page.locator('#work').fill('Короткий ответ с целью и проверкой');
+ await page.locator('#evaluate').click();
+ assert.match(await page.locator('#feedback').innerText(),/Проверка знаний не завершена/);
+ assert.match(await page.locator('#feedback').innerText(),/Практика требует доработки/);
+ await page.locator('[data-answer="1"]').click();
+ await page.locator('#evaluate').click();
+ assert.match(await page.locator('#feedback').innerText(),/Проверка понимания пройдена/);
+ await page.evaluate(()=>localStorage.clear());
  // Spaced repetition: an early review may show the definition but cannot give credit.
  await page.goto(base+'/study-lab.html');
  await page.evaluate(()=>localStorage.clear());
