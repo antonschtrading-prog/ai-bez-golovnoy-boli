@@ -57,12 +57,17 @@
     'Content-Type':'application/json','If-Match':'"'+revision+'"','Idempotency-Key':operationId
    },body:JSON.stringify({sections:payload})});
   }
+  async function review(input){
+   if(!token)throw Error('Sign in first');
+   if(!input||typeof input!=='object')throw Error('Invalid review request');
+   return request('/v1/review',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(input)});
+  }
   async function logout(){
    if(!token)return;
    try{await request('/v1/session',{method:'DELETE'});}finally{token=null;accountId=null;}
   }
   function clear(){token=null;accountId=null}
-  return Object.freeze({login,browserChallenge,browserComplete,read,save,logout,clear,isSignedIn:()=>!!token,account:()=>accountId});
+  return Object.freeze({login,browserChallenge,browserComplete,read,save,review,logout,clear,isSignedIn:()=>!!token,account:()=>accountId});
  }
  // A same-origin child may borrow the shell session without seeing its token.
  // Signing out of the manual tools detaches only that view, not autosaving.
@@ -73,6 +78,7 @@
    async login(){if(!source.isSignedIn())throw Error('Mini App session expired');attached=true;return {accountId:source.account()}},
    async read(){requireSession();return source.read()},
    async save(...args){requireSession();return source.save(...args)},
+   async review(...args){requireSession();return source.review(...args)},
    async logout(){attached=false},clear(){attached=false},
    isSignedIn:()=>attached&&source.isSignedIn(),account:()=>attached&&source.isSignedIn()?source.account():null
   });
