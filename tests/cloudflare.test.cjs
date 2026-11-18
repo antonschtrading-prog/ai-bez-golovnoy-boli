@@ -275,3 +275,36 @@ test('AI review endpoint is opt-in, authenticated, origin bound, rate limited, a
  assert.equal(invalid.status,502);
  assert.equal((await invalid.json()).error,'review_unavailable');
 });
+
+
+test('AI review rejects any inference attempt when durable budget unavailable or exhausted',async t=>{
+ const f=await setup();t.after(f.db.close);
+ const {createHandler}=await import('../cloudflare/api.mjs');
+ const origin='https://antonschtrading-prog.github.io';
+ const input={level:'A1',title:'Задание',task:'Сделай проверку',work:'Решение: замерить показатели.',criteria:['Есть измерение']};
+ let calls=0,budgetCalls=0;
+ let permission=true,fail=false;
+ const reviewProvider=async()=>{calls++;return{items:[{index:0,rating:'met',quote:'замерить показатели',reason:'Есть метрика',nextStep:'Уточнить'}]}};
+ const reviewLimiter=async()=>true;
+ const reviewBudget=async()=>{budgetCalls++;if(fail)throw Error('db offline');return{ok:permission}};
+ const request=handler=>handler(new Request('https://api.example/v1/review',{method:'POST',headers:{
+  'Content-Type':'application/json',Origin:origin,Authorization:'Bearer '+f.token1
+ },body:JSON.stringify(input)}));
+ const noBudget=createHandler({db:f.db,origins:[origin],reviewProvider,reviewLimiter});
+ assert.equal((await request(noBudget)).status,503);
+ assert.equal(calls,0);assert.equal(budgetCalls,0);
+ const handler=createHandler({db:f.db,origins:[origin],reviewProvider,reviewLimiter,reviewBudget});
+ permission=false;
+ const exhausted=await request(handler);
+ assert.equal(exhausted.status,429);
+ assert.equal((await exhausted.json()).error,'review_daily_free_quota_exhausted');
+ assert.equal(calls,0);
+ fail=true;
+ const unavailable=await request(handler);
+ assert.equal(unavailable.status,503);
+ assert.equal((await unavailable.json()).error,'review_budget_unavailable');
+ assert.equal(calls,0);
+ permission=true;fail=false;
+ const success=await request(handler);
+ assert.equal(success.status,200);assert.equal(calls,1);
+});
