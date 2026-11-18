@@ -2,7 +2,7 @@ const {test}=require('node:test'),assert=require('node:assert/strict');
 const {DatabaseSync}=require('node:sqlite'),{readFileSync}=require('node:fs');
 const path=require('node:path');
 require('../progress-sync-model.js');
-const migrations=['0001_schema.sql','0002_oidc_challenges.sql'];
+const migrations=['0001_schema.sql','0002_oidc_challenges.sql','0003_ai_review_budget.sql'];
 const schema=migrations.map(name=>readFileSync(path.join(__dirname,'../cloudflare/migrations',name),'utf8')).join('\n');
 function mockD1(){
  const sqlite=new DatabaseSync(':memory:');sqlite.exec(schema);
@@ -244,7 +244,8 @@ test('AI review endpoint is opt-in, authenticated, origin bound, rate limited, a
  let allowed=true,malformed=false;
  const create=(enabled=true)=>createHandler({db:f.db,origins:[origin],
   reviewProvider:enabled?async()=>{providerCalls++;return{items:malformed?[{...items[0],quote:'выдуманное'},items[1]]:items}}:null,
-  reviewLimiter:enabled?async(account)=>{limiterCalls++;assert(account==='person_A'||account==='person_B');return allowed}:null});
+  reviewLimiter:enabled?async(account)=>{limiterCalls++;assert(account==='person_A'||account==='person_B');return allowed}:null,
+  reviewBudget:enabled?async()=>({ok:true}):null});
  const send=async(handler,token=f.token1,headers={},body=input)=>handler(new Request('https://api.example/v1/review',{
   method:'POST',headers:{Authorization:'Bearer '+token,Origin:origin,'Content-Type':'application/json',...headers},
   body:JSON.stringify(body)
