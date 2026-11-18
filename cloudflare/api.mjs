@@ -98,7 +98,7 @@ export function createHandler({db,origins=[],botToken=null,oidcClientId=null,jwk
      const status=await reviewStatus(account);
      if(!status||typeof status!=='object'||!Number.isSafeInteger(status.globalRemaining)||
       !Number.isSafeInteger(status.accountRemaining)||status.globalRemaining<0||status.accountRemaining<0||
-      typeof status.day!=='string'||!/^\\d{4}-\\d\\d-\\d\\d$/.test(status.day))
+      typeof status.day!=='string'||!/^\d{4}-\d\d-\d\d$/.test(status.day))
       return answer(503,{error:'review_budget_unavailable'});
      return answer(200,{enabled:status.globalRemaining>0&&status.accountRemaining>0,
       reason:status.globalRemaining>0&&status.accountRemaining>0?null:'review_daily_free_quota_exhausted',
