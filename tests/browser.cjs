@@ -9,6 +9,35 @@ const http=require('node:http'),fs=require('node:fs'),path=require('node:path'),
  const context=await browser.newContext({viewport:{width:390,height:844},acceptDownloads:true});
  const page=await context.newPage();page.on('pageerror',e=>errors.push(e.message));
  for(const name of fs.readdirSync(root).filter(n=>n.endsWith('.html'))){await page.goto(base+'/'+name);await page.waitForLoadState('load');assert(await page.locator('body').innerText(),name);}
+ // Opt-in AI control: anonymous browser cannot upload a draft and must explain sign-in.
+ await page.goto(base+'/assessment.html');
+ await page.evaluate(()=>localStorage.clear());
+ await page.reload();
+ await page.locator('#work').fill('Цель: найти решение.');
+ await page.locator('#reviewOnline').click();
+ await page.waitForFunction(()=>/доступна после входа/.test(document.querySelector('#reviewOnlineStatus').textContent));
+ assert.match(await page.locator('#reviewOnlineStatus').innerText(),/Telegram Mini App/);
+ assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('ai-course-assessment-v1')).results.A1.externalReview??null),null);
+ // Mimic the authenticated server adapter without external network or real student data.
+ await page.evaluate(()=>{
+  CourseReviewClient.run=async input=>({review:{items:input.criteria.map((criterion,i)=>({
+   index:i,rating:i===0?'met':'not-demonstrated',quote:i===0?'Цель: найти решение.':'',
+   reason:i===0?'Найдена цель':'Критерий не продемонстрирован',nextStep:'Уточнить результат'
+  }))}});
+ });
+ await page.locator('#reviewOnline').click();
+ await page.waitForFunction(()=>/Автоматический разбор получен/.test(document.querySelector('#reviewOnlineStatus').textContent));
+ assert.match(await page.locator('#reviewResult').innerText(),/Найдена цель/);
+ assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('ai-course-assessment-v1')).results.A1.externalReview.items.length),4);
+ await page.goto(base+'/deep-practice.html');
+ await page.evaluate(()=>localStorage.clear());
+ await page.reload();
+ await page.locator('#work').fill('Проверка практики.');
+ await page.locator('summary').filter({hasText:'Внешний разбор практики'}).click();
+ await page.locator('#reviewOnline').click();
+ await page.waitForFunction(()=>/доступна после входа/.test(document.querySelector('#reviewOnlineStatus').textContent));
+ assert.match(await page.locator('#reviewOnlineStatus').innerText(),/Telegram Mini App/);
+ await page.evaluate(()=>localStorage.clear());
  // Verbatim-cited external feedback should be preserved but never become a certificate.
  await page.goto(base+'/assessment.html');
  await page.evaluate(()=>localStorage.clear());
