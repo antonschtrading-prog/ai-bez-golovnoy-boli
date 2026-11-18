@@ -18,7 +18,7 @@ export function renderFreeReleaseConfig(template,{databaseId,rateNamespace='8142
     !template.includes('binding = "DB"')||
     !template.includes('database_name = "ai-course-progress"')||
     !template.includes('COURSE_ORIGINS = "https://antonschtrading-prog.github.io"'))throw Error('release_must_use_existing_resources');
- const rendered=template.replace(placeholder,'database_id = "'+databaseId+'"');
+ const rendered='keep_vars = true\n'+template.replace(placeholder,'database_id = "'+databaseId+'"');
  const aiConfig=`
 # Prepared binding is inert. No review is possible without separate calibration.
 [ai]
