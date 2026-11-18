@@ -30,5 +30,6 @@ migrations_dir = "cloudflare/migrations"
 #
 # [vars] must then also contain:
 # AI_REVIEW_ENABLED = "true"
-# AI_REVIEW_MODEL = "@cf/SELECT_A_SUPPORTED_TEXT_MODEL"
+# AI_REVIEW_CALIBRATED = "true" # Only after real model meets holdout thresholds
+# AI_REVIEW_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast" # Candidate, NOT approved until live calibration
 # Never put API keys or other secrets in [vars].
