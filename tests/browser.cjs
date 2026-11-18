@@ -21,6 +21,7 @@ const http=require('node:http'),fs=require('node:fs'),path=require('node:path'),
   {index:2,rating:'not-demonstrated',quote:'',reason:'Нет разбора гипотез',nextStep:'Разделить факты'},
   {index:3,rating:'partial',quote:'Проверка: найти исходные данные',reason:'Есть план без источника',nextStep:'Сверить данные'}
  ]});
+ await page.locator('summary').filter({hasText:'Вставить внешний разбор'}).click();
  await page.locator('#reviewJSON').fill(review);
  await page.locator('#importReview').click();
  assert.match(await page.locator('#reviewResult').innerText(),/не подтверждено автоматически/);
@@ -34,6 +35,7 @@ const http=require('node:http'),fs=require('node:fs'),path=require('node:path'),
  await page.evaluate(()=>localStorage.clear());
  await page.reload();
  await page.locator('#work').fill('План — уточнить задачу.');
+ await page.locator('summary').filter({hasText:'Внешний разбор практики'}).click();
  await page.locator('#reviewJSON').fill('{"schema":"course-rubric-review-v1","items":[]}');
  await page.locator('#importReview').click();
  assert.match(await page.locator('#reviewImportStatus').innerText(),/не принят/);
