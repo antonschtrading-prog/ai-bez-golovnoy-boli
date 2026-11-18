@@ -9,6 +9,37 @@ const http=require('node:http'),fs=require('node:fs'),path=require('node:path'),
  const context=await browser.newContext({viewport:{width:390,height:844},acceptDownloads:true});
  const page=await context.newPage();page.on('pageerror',e=>errors.push(e.message));
  for(const name of fs.readdirSync(root).filter(n=>n.endsWith('.html'))){await page.goto(base+'/'+name);await page.waitForLoadState('load');assert(await page.locator('body').innerText(),name);}
+ // Verbatim-cited external feedback should be preserved but never become a certificate.
+ await page.goto(base+'/assessment.html');
+ await page.evaluate(()=>localStorage.clear());
+ await page.reload();
+ const reviewWork='Цель — уточнить результат. Проверка: найти исходные данные.';
+ await page.locator('#work').fill(reviewWork);
+ const review=JSON.stringify({schema:'course-rubric-review-v1',items:[
+  {index:0,rating:'met',quote:'Цель — уточнить результат',reason:'Есть цель',nextStep:'Добавить измерение'},
+  {index:1,rating:'not-demonstrated',quote:'',reason:'Нет уточняющих вопросов',nextStep:'Задать вопросы'},
+  {index:2,rating:'not-demonstrated',quote:'',reason:'Нет разбора гипотез',nextStep:'Разделить факты'},
+  {index:3,rating:'partial',quote:'Проверка: найти исходные данные',reason:'Есть план без источника',nextStep:'Сверить данные'}
+ ]});
+ await page.locator('summary').filter({hasText:'Вставить внешний разбор'}).click();
+ await page.locator('#reviewJSON').fill(review);
+ await page.locator('#importReview').click();
+ assert.match(await page.locator('#reviewResult').innerText(),/не подтверждено автоматически/);
+ assert.match(await page.locator('#reviewResult').innerText(),/Добавить измерение/);
+ await page.reload();
+ assert.match(await page.locator('#reviewResult').innerText(),/Добавить измерение/);
+ await page.locator('#work').fill(reviewWork+' Теперь с изменением.');
+ await page.reload();
+ assert.match(await page.locator('#reviewResult').innerText(),/устарели/);
+ await page.goto(base+'/deep-practice.html');
+ await page.evaluate(()=>localStorage.clear());
+ await page.reload();
+ await page.locator('#work').fill('План — уточнить задачу.');
+ await page.locator('summary').filter({hasText:'Внешний разбор практики'}).click();
+ await page.locator('#reviewJSON').fill('{"schema":"course-rubric-review-v1","items":[]}');
+ await page.locator('#importReview').click();
+ assert.match(await page.locator('#reviewImportStatus').innerText(),/не принят/);
+ await page.evaluate(()=>localStorage.clear());
  // Assessment status must distinguish knowledge from practice without character-count grades.
  await page.goto(base+'/assessment.html');
  await page.evaluate(()=>localStorage.clear());
