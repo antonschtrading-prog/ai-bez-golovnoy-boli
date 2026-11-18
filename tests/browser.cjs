@@ -20,10 +20,10 @@ const http=require('node:http'),fs=require('node:fs'),path=require('node:path'),
  assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('ai-course-assessment-v1')).results.A1.externalReview??null),null);
  // Mimic the authenticated server adapter without external network or real student data.
  await page.evaluate(()=>{
-  CourseReviewClient.run=async input=>({review:{items:input.criteria.map((criterion,i)=>({
+  window.CourseReviewClient={...CourseReviewClient,run:async input=>({review:{items:input.criteria.map((criterion,i)=>({
    index:i,rating:i===0?'met':'not-demonstrated',quote:i===0?'Цель: найти решение.':'',
    reason:i===0?'Найдена цель':'Критерий не продемонстрирован',nextStep:'Уточнить результат'
-  }))}});
+  }))}})};
  });
  await page.locator('#reviewOnline').click();
  await page.waitForFunction(()=>/Автоматический разбор получен/.test(document.querySelector('#reviewOnlineStatus').textContent));
