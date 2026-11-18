@@ -33,8 +33,8 @@ period = 60
 `;
  // The defaults in worker.mjs remain fail-closed; make this explicit for release.
  return rendered.replace('COURSE_ORIGINS = "https://antonschtrading-prog.github.io"',
-  'COURSE_ORIGINS = "https://antonschtrading-prog.github.io"\\nAI_REVIEW_ENABLED = "false"\\nAI_REVIEW_CALIBRATED = "false"\\nAI_REVIEW_FREE_PLAN_CONFIRMED = "false"\\nAI_REVIEW_MODEL = "@cf/meta/llama-3.1-8b-instruct-fp8-fast"')
-  + '\\n'+aiConfig;
+  'COURSE_ORIGINS = "https://antonschtrading-prog.github.io"\nAI_REVIEW_ENABLED = "false"\nAI_REVIEW_CALIBRATED = "false"\nAI_REVIEW_FREE_PLAN_CONFIRMED = "false"\nAI_REVIEW_MODEL = "@cf/meta/llama-3.1-8b-instruct-fp8-fast"')
+  + '\n'+aiConfig;
 }
 if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url)){
  const databaseId=process.env.CLOUDFLARE_D1_DATABASE_ID||'';
