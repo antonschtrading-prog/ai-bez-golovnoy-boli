@@ -57,6 +57,10 @@
     'Content-Type':'application/json','If-Match':'"'+revision+'"','Idempotency-Key':operationId
    },body:JSON.stringify({sections:payload})});
   }
+  async function reviewStatus(){
+   if(!token)throw Error('Sign in first');
+   return request('/v1/review/status');
+  }
   async function review(input){
    if(!token)throw Error('Sign in first');
    if(!input||typeof input!=='object')throw Error('Invalid review request');
@@ -67,7 +71,7 @@
    try{await request('/v1/session',{method:'DELETE'});}finally{token=null;accountId=null;}
   }
   function clear(){token=null;accountId=null}
-  return Object.freeze({login,browserChallenge,browserComplete,read,save,review,logout,clear,isSignedIn:()=>!!token,account:()=>accountId});
+  return Object.freeze({login,browserChallenge,browserComplete,read,save,review,reviewStatus,logout,clear,isSignedIn:()=>!!token,account:()=>accountId});
  }
  // A same-origin child may borrow the shell session without seeing its token.
  // Signing out of the manual tools detaches only that view, not autosaving.
@@ -79,6 +83,7 @@
    async read(){requireSession();return source.read()},
    async save(...args){requireSession();return source.save(...args)},
    async review(...args){requireSession();return source.review(...args)},
+   async reviewStatus(){requireSession();return source.reviewStatus()},
    async logout(){attached=false},clear(){attached=false},
    isSignedIn:()=>attached&&source.isSignedIn(),account:()=>attached&&source.isSignedIn()?source.account():null
   });

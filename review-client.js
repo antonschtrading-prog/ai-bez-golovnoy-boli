@@ -14,6 +14,22 @@
   try{return await client.review(input)}
   finally{await client.logout()}
  }
+ async function quota(){
+  if(!available())throw Error('Проверить бесплатный лимит можно в Telegram Mini App.');
+  const client=root.parent.CourseMiniAppAccount();
+  if(!client||typeof client.reviewStatus!=='function')throw Error('Проверка лимита недоступна в этой версии курса.');
+  await client.login();
+  try{return await client.reviewStatus()}
+  finally{await client.logout()}
+ }
+ function quotaText(status){
+  if(!status||status.enabled===false&&status.reason==='review_not_configured')
+   return 'Автоматическая ИИ-проверка пока выключена. Уроки и прогресс работают без неё.';
+  if(!status||!Number.isSafeInteger(status.accountRemaining)||!Number.isSafeInteger(status.globalRemaining))
+   return 'Не удалось определить бесплатный лимит.';
+  if(!status.enabled)return 'Бесплатный лимит на сегодня исчерпан. Проверки возобновятся после обновления квоты по UTC; уроки работают.';
+  return 'Бесплатных проверок сегодня: для тебя '+status.accountRemaining+', для всего курса '+status.globalRemaining+'.';
+ }
  function errorText(error){
   const code=String(error?.message||'');
   const codes={
@@ -29,5 +45,5 @@
   };
   return codes[code]||code||'Ошибка подключения к серверу проверки';
  }
- root.CourseReviewClient=Object.freeze({available,run,errorText});
+ root.CourseReviewClient=Object.freeze({available,run,quota,quotaText,errorText});
 })(typeof window!=='undefined'?window:globalThis);

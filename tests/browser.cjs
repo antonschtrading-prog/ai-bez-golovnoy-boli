@@ -9,6 +9,23 @@ const http=require('node:http'),fs=require('node:fs'),path=require('node:path'),
  const context=await browser.newContext({viewport:{width:390,height:844},acceptDownloads:true});
  const page=await context.newPage();page.on('pageerror',e=>errors.push(e.message));
  for(const name of fs.readdirSync(root).filter(n=>n.endsWith('.html'))){await page.goto(base+'/'+name);await page.waitForLoadState('load');assert(await page.locator('body').innerText(),name);}
+ // Free quota check is read-only and cannot send an assignment for model assessment.
+ await page.goto(base+'/assessment.html');
+ await page.evaluate(()=>localStorage.clear());
+ await page.reload();
+ await page.locator('#checkReviewQuota').click();
+ await page.waitForFunction(()=>/Проверить бесплатный лимит можно/.test(document.querySelector('#reviewOnlineStatus').textContent));
+ assert.equal(await page.evaluate(()=>localStorage.getItem('ai-course-assessment-v1')),null);
+ await page.evaluate(()=>{
+  window.CourseReviewClient={...CourseReviewClient,quota:async()=>({day:'2026-11-18',globalRemaining:3,accountRemaining:1,enabled:true})};
+ });
+ await page.locator('#checkReviewQuota').click();
+ await page.waitForFunction(()=>/для тебя 1, для всего курса 3/.test(document.querySelector('#reviewOnlineStatus').textContent));
+ assert.match(await page.locator('#reviewOnlineStatus').innerText(),/Бесплатных проверок/);
+ await page.goto(base+'/deep-practice.html');
+ await page.locator('summary').filter({hasText:'Внешний разбор практики'}).click();
+ await page.locator('#checkReviewQuota').click();
+ await page.waitForFunction(()=>/Проверить бесплатный лимит можно/.test(document.querySelector('#reviewOnlineStatus').textContent));
  // Opt-in AI control: anonymous browser cannot upload a draft and must explain sign-in.
  await page.goto(base+'/assessment.html');
  await page.evaluate(()=>localStorage.clear());

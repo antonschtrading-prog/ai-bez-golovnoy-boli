@@ -308,3 +308,41 @@ test('AI review rejects any inference attempt when durable budget unavailable or
  const success=await request(handler);
  assert.equal(success.status,200);assert.equal(calls,1);
 });
+
+
+test('review quota status is authenticated, read-only, origin-limited and fail closed',async t=>{
+ const fixture=await setup();t.after(fixture.db.close);
+ const {createHandler}=await import('../cloudflare/api.mjs');
+ const origin='https://antonschtrading-prog.github.io';
+ let reads=0,reservations=0,called=0;
+ const status=async account=>{reads++;return {day:'2026-11-18',globalRemaining:3,accountRemaining:account==='person_A'?1:2}};
+ const handler=createHandler({db:fixture.db,origins:[origin],reviewStatus:status,
+  reviewProvider:async()=>{called++;throw Error('Not called')},
+  reviewLimiter:async()=>true,reviewBudget:async()=>{reservations++;return{ok:true}}});
+ const request=(token=fixture.token1,requestOrigin=origin,url='https://example.org/v1/review/status')=>
+   handler(new Request(url,{headers:{Authorization:'Bearer '+token,...(requestOrigin?{Origin:requestOrigin}:{})}}));
+ assert.equal((await request('bogus')).status,401);
+ assert.equal((await request(fixture.token1,'https://evil.example')).status,403);
+ assert.equal((await request(fixture.token1,null)).status,403);
+ assert.equal((await request(fixture.token1,origin,'https://example.org/v1/review/status?account=person_B')).status,400);
+ let reply=await request();
+ assert.equal(reply.status,200);
+ assert.deepEqual(await reply.json(),{enabled:true,reason:null,day:'2026-11-18',globalRemaining:3,accountRemaining:1});
+ const other=await request(fixture.tokenOther);
+ assert.equal((await other.json()).accountRemaining,2);
+ assert.equal(reads,2);assert.equal(reservations,0);assert.equal(called,0);
+ assert.equal((await fixture.req(fixture.token1)).body.revision,0);
+ const disabled=createHandler({db:fixture.db,origins:[origin]});
+ assert.deepEqual(await (await disabled(new Request('https://example.org/v1/review/status',{
+  headers:{Authorization:'Bearer '+fixture.token1,Origin:origin}}))).json(),
+  {enabled:false,reason:'review_not_configured'});
+ const empty=createHandler({db:fixture.db,origins:[origin],reviewStatus:async()=>({day:'2026-11-18',globalRemaining:0,accountRemaining:2})});
+ assert.equal((await (await empty(new Request('https://example.org/v1/review/status',{
+  headers:{Authorization:'Bearer '+fixture.token1,Origin:origin}}))).json()).enabled,false);
+ const failure=createHandler({db:fixture.db,origins:[origin],reviewStatus:async()=>{throw Error('D1 unavailable')}});
+ assert.equal((await failure(new Request('https://example.org/v1/review/status',{
+  headers:{Authorization:'Bearer '+fixture.token1,Origin:origin}}))).status,503);
+ const malformed=createHandler({db:fixture.db,origins:[origin],reviewStatus:async()=>({day:'yesterday',globalRemaining:0,accountRemaining:0})});
+ assert.equal((await malformed(new Request('https://example.org/v1/review/status',{
+  headers:{Authorization:'Bearer '+fixture.token1,Origin:origin}}))).status,503);
+});
