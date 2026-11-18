@@ -31,5 +31,11 @@ migrations_dir = "cloudflare/migrations"
 # [vars] must then also contain:
 # AI_REVIEW_ENABLED = "true"
 # AI_REVIEW_CALIBRATED = "true" # Only after real model meets holdout thresholds
-# AI_REVIEW_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast" # Candidate, NOT approved until live calibration
+# AI_REVIEW_MODEL = "@cf/meta/llama-3.1-8b-instruct-fp8-fast"
+# AI_REVIEW_FREE_PLAN_CONFIRMED = "true" # Confirm Workers Free plan in dashboard; NEVER enable Paid
+# Requires remote migration 0003_ai_review_budget.sql on existing D1.
+# Hard safety limits: 8 requests/UTC day for all users; 2 requests/account/day.
+# Additional endpoint rate limit is NOT the quota; D1 reservations are global.
+# Always keep the AI reviewer disabled if the Free plan or model is uncertain.
+
 # Never put API keys or other secrets in [vars].
