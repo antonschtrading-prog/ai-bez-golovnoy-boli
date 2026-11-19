@@ -30,6 +30,8 @@ jobs:
       CLOUDFLARE_D1_DATABASE_ID: ${{ secrets.CLOUDFLARE_D1_DATABASE_ID }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Approved curriculum integrity test reads the pinned baseline commit.
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
