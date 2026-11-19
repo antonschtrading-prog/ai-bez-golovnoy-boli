@@ -55,12 +55,49 @@ jobs:
         run: node cloudflare/free-release-config.mjs
       - name: Validate Worker build without deploying
         run: npx --yes wrangler@4 deploy --dry-run
+      - name: Inspect existing Worker deployments (no writes)
+        id: worker_inspect
+        continue-on-error: true
+        run: npx --yes wrangler@4 deployments list --name ai-course-progress
       - name: Inspect unapplied D1 migrations (no writes)
-        if: inputs.operation == 'inspect'
+        id: d1_inspect
+        continue-on-error: true
         run: npx --yes wrangler@4 d1 migrations list ai-course-progress --remote
+      - name: Report Worker and D1 inspection independently
+        if: always()
+        env:
+          WORKER_RESULT: ${{ steps.worker_inspect.outcome }}
+          D1_RESULT: ${{ steps.d1_inspect.outcome }}
+          RELEASE_OPERATION: ${{ inputs.operation }}
+        shell: bash
+        run: |
+          {
+            echo "## Existing Cloudflare service inspection"
+            echo
+            echo "- Operation: \`$RELEASE_OPERATION\`"
+            echo "- Local Worker tests and dry-run: consult prior steps (no deployment in inspect mode)"
+            if [[ "$WORKER_RESULT" == "success" ]]; then
+              echo "- Remote Worker deployment listing: **CONFIRMED (read-only)**"
+            else
+              echo "- Remote Worker deployment listing: **UNVERIFIED / BLOCKED**"
+            fi
+            if [[ "$D1_RESULT" == "success" ]]; then
+              echo "- Remote D1 migration listing: **CONFIRMED (read-only)**"
+            else
+              echo "- Remote D1 migration listing: **UNVERIFIED / BLOCKED**"
+              echo "- The current token may lack remote D1 query access. Workers Scripts Edit and D1 Read alone do not guarantee migration-query permission."
+            fi
+            echo
+            echo "No D1 data, account settings, or paid AI service was changed by these inspections."
+          } >> "$GITHUB_STEP_SUMMARY"
       - name: Deploy to existing ai-course-progress (review always disabled)
-        if: inputs.operation == 'deploy-disabled-ai'
+        if: inputs.operation == 'deploy-disabled-ai' && steps.worker_inspect.outcome == 'success' && steps.d1_inspect.outcome == 'success'
         run: npx --yes wrangler@4 deploy
+      - name: Stop on incomplete remote preflight
+        if: steps.worker_inspect.outcome != 'success' || steps.d1_inspect.outcome != 'success'
+        run: |
+          echo "::error::Remote inspection incomplete. See the GitHub Actions summary. No deployment was permitted."
+          exit 1
       - name: Remove temporary release config
         if: always()
         run: rm -f wrangler.toml
